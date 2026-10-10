@@ -31,7 +31,7 @@ function route(focus=false) {
   current=index>=0&&index<lessons.length?index:0;
   const lesson=lessons[current];
   $('lesson').innerHTML=(current===0?hero:'')+lesson.html;
-  $('lesson').querySelectorAll('a').forEach(link=>{ const url=new URL(link.href,location.href); if(url.hostname==='localhost' && url.port==='8000'){url.port=appPort;link.href=url.href;} if(url.origin===location.origin && url.pathname.endsWith('/pitch.html')){url.searchParams.set('appPort',appPort);link.href=url.href;} });
+  $('lesson').querySelectorAll('a').forEach(link=>{ const url=new URL(link.href,location.href); if(url.hostname==='localhost' && url.port==='8000'){url.port=appPort;link.href=url.href;} });
   $('breadcrumb').textContent=`${lesson.group} / LESSON ${String(current+1).padStart(2,'0')}`;
   $('duration').textContent=`${lesson.minutes} min`;
   document.title=`${lesson.title} · MobileHeal Codelab`;
@@ -42,9 +42,25 @@ function route(focus=false) {
   if(current===lessons.length-1) $('next').href='#0';
   $('complete').setAttribute('aria-pressed',String(completed.has(current)));
   $('complete').innerHTML=completed.has(current)?'<span aria-hidden="true">✓</span> Lesson complete':'<span aria-hidden="true">○</span> Mark lesson complete';
+  setupDiagrams();
   nav(); $('sidebar').classList.remove('open'); $('menu').setAttribute('aria-expanded','false');
   window.scrollTo({top:0,behavior:'instant'});
   if(focus) $('lesson').focus({preventScroll:true});
+}
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+function setDiagram(fig, playing) {
+  const svg=fig.querySelector('svg.dg'); if(!svg||!svg.pauseAnimations) return;
+  const btn=fig.querySelector('.dg-toggle');
+  if(playing) svg.unpauseAnimations(); else svg.pauseAnimations();
+  fig.classList.toggle('paused',!playing);
+  if(btn){ btn.textContent=playing?'Pause':'Play'; btn.setAttribute('aria-pressed',String(!playing)); }
+}
+function setupDiagrams() {
+  $('lesson').querySelectorAll('figure.diagram').forEach(fig=>{
+    const svg=fig.querySelector('svg.dg');
+    if(reduceMotion.matches){ svg.setCurrentTime(Number(svg.dataset.cycle||12)*0.94); setDiagram(fig,false); }
+    else { svg.setCurrentTime(0); setDiagram(fig,true); }
+  });
 }
 document.querySelector('.skip').addEventListener('click',event=>{event.preventDefault();$('lesson').focus();$('lesson').scrollIntoView();});
 $('menu').addEventListener('click',()=>{ const open=$('sidebar').classList.toggle('open'); $('menu').setAttribute('aria-expanded',String(open)); });
@@ -55,6 +71,10 @@ window.addEventListener('hashchange',()=>route(true));
 $('lesson').addEventListener('click',async event=>{
   const copy=event.target.closest('.copy');
   if(copy) { const text=copy.closest('.codeblock').querySelector('pre code').textContent; try { await navigator.clipboard.writeText(text); copy.textContent='Copied ✓'; toast('Copied to clipboard'); } catch (_) { const selection=window.getSelection(); const range=document.createRange(); range.selectNodeContents(copy.closest('.codeblock').querySelector('pre')); selection.removeAllRanges(); selection.addRange(range); toast('Code selected. Press Ctrl+C or ⌘C to copy.'); } }
+  const toggle=event.target.closest('.dg-toggle');
+  if(toggle) { const fig=toggle.closest('figure'); setDiagram(fig, fig.classList.contains('paused')); return; }
+  const replay=event.target.closest('.dg-replay');
+  if(replay) { const fig=replay.closest('figure'); fig.querySelector('svg.dg').setCurrentTime(0); setDiagram(fig,true); return; }
   const image=event.target.closest('.image-open');
   if(image) { const img=image.querySelector('img'); $('large-image').src=img.src; $('large-image').alt=img.alt; $('image-caption').textContent=img.alt; $('lightbox').showModal(); }
 });

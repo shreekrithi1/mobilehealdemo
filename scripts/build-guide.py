@@ -38,6 +38,13 @@ def render(markdown):
                 body.append(lines[i]); i += 1
             out.append('<div class="codeblock"><div class="codebar"><span>' + html.escape(lang) + '</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre><code>' + html.escape('\n'.join(body)) + '</code></pre></div>')
             i += 1; continue
+        diagram = re.fullmatch(r'\{\{diagram (\w+)\}\}', line.strip())
+        if diagram:
+            svg = (GUIDE / 'diagrams' / (diagram[1] + '.svg')).read_text().strip()
+            out.append('<figure class="diagram">' + svg + '<div class="dg-bar"><span class="dg-live"><span class="dg-dot"></span>Animated</span>'
+                       '<button class="dg-toggle" type="button" aria-pressed="false">Pause</button>'
+                       '<button class="dg-replay" type="button">Replay</button></div></figure>')
+            i += 1; continue
         image = re.fullmatch(r'!\[([^\]]+)\]\(([^)]+)\)', line)
         if image:
             label = 'Enlarge diagram' if 'mobileheal-' in image[2] else 'Enlarge screenshot'
@@ -58,7 +65,7 @@ def render(markdown):
                 items.append('<li>' + inline(re.sub(pattern, '', lines[i])) + '</li>'); i += 1
             out.append(f'<{tag}>' + ''.join(items) + f'</{tag}>'); continue
         body = [line]; i += 1
-        while i < len(lines) and lines[i].strip() and not re.match(r'^(?:#|>|```|!\[|- |\d+\. )', lines[i]):
+        while i < len(lines) and lines[i].strip() and not re.match(r'^(?:#|>|```|!\[|\{\{|- |\d+\. )', lines[i]):
             body.append(lines[i]); i += 1
         out.append('<p>' + inline(' '.join(body)) + '</p>')
     return '\n'.join(out)

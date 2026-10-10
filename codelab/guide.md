@@ -11,17 +11,13 @@ The story is a customer profile screen. A product owner wants a softer notificat
 
 ### The architecture: one workspace, a focused crew
 
-![Illustrated MobileHeal architecture with the web portal, backend agents, mobile clients, isolated Git workspace, local database and simulated integrations](assets/mobileheal-architecture.png)
+{{diagram architecture}}
 
 *Architecture overview. The portal sends requests to the FastAPI backend. Delivery workflow, Crash healer and DataWatchdog share the local application context. Git holds generated changes; SQLite holds profiles and workflow state. Mobile clients use the API and live WebSocket updates. External services are simulated in this demo.*
 
-### The five-slide product pitch
-
-[View the MobileHeal web pitch](pitch.html#1) — explore the product, audience views, workflow, evidence gates and production design. Read it directly in your browser; no presentation download is needed.
-
 ### The workflow: proposal, approval, evidence
 
-![Illustrated six-stage delivery workflow and recovery feedback loop for MobileHeal](assets/mobileheal-workflow.png)
+{{diagram delivery}}
 
 *Delivery follows Requirements → UX design → Code → Pull request → Tests → Local merge. Human decisions guard the Manual-mode gates. A crash or data issue enters a recovery path: detect and diagnose, propose a fix or corrective action, review and verify, then replay the failing request or rescan the data. Data issues can also require a customer to update a record.*
 
@@ -30,6 +26,12 @@ The story is a customer profile screen. A product owner wants a softer notificat
 Open [Workflow studio](http://localhost:8000/workflow-map) to follow five starting signals: a change request, Firebase crash, issue email, internal Jira defect or BA requirement. Choose a passing or rework scenario, then start, pause or replay it. Static view supports reduced motion. This diagram is a labeled sample; unconfigured connectors use mock signals, and the animation does not represent a live agent run.
 
 ![Animated workflow studio with five sources, parallel review gates and rework paths](assets/workflow-studio-desktop.jpg)
+
+### The enterprise path: crash to production
+
+{{diagram enterprise}}
+
+*A Crashlytics crash becomes an incident, the seven-agent council writes the root cause, and a requirement gap opens a change request. Every step has an owner; in Autopilot a bot owns them. Two agents (Autopilot) or two people (Manual) approve the PR, and it waits ready to deploy until a person flips the production switch.*
 
 ### What you will learn
 
@@ -367,6 +369,10 @@ Preserve the failure output. A tutorial packaging check does not prove the inher
 ## Leave with evidence
 
 You have followed a requirement into explicit rules, a proposed screen, generated source, checks, reviewer decisions and a local delivery gate. You have also explored how incidents and data quality feed back into the same workflow.
+
+### The whole journey, once more
+
+{{diagram enterprise}}
 
 ### Keep a useful record
 
