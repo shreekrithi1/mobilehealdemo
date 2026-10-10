@@ -44,15 +44,32 @@ def test_all_integrations_work_in_demo(c):
 def test_seed_and_full_pipeline(c):
     out = c.post("/api/demo-mode/seed").json()
     assert out["profiles"] == 6 and len(out["change_requests"]) == 3
-    t0, merged = time.time(), None
-    while time.time() - t0 < 150:
+    t0, candidate = time.time(), None
+    while time.time() - t0 < 30:
         crs = c.get("/api/cr").json()
-        merged = next((x for x in crs if x["status"] == "merged" and x["kind"] != "incident"), None)
-        if merged and sum(1 for x in crs if x["kind"] == "incident") >= 1:
+        assert not any(x["status"] == "merged" for x in crs)
+        candidate = next((x for x in crs if x["status"] == "pr_open" and x["kind"] != "incident"), None)
+        if candidate and any(x["kind"] == "incident" for x in crs):
             break
-        time.sleep(1)
-    assert merged, crs
-    full = c.get(f"/api/cr/{merged['id']}").json()
+        time.sleep(0.25)
+    assert candidate and any(x["kind"] == "incident" for x in crs), crs
+    cid = candidate["id"]
+    assert c.post("/api/delivery-mode", json={"mode": "manual"}).status_code == 200
+    assert c.post(f"/api/cr/{cid}/merge").status_code == 409
+    for case in c.get(f"/api/cr/{cid}/tests").json()["cases"]:
+        assert c.post(f"/api/tests/{case['id']}/runs", json={"cr_id": cid, "status": "passed", "steps": []}).status_code == 201
+    assert c.post(f"/api/cr/{cid}/test", json={"passed": True, "notes": "Demo generated rules cases passed"}).status_code == 200
+    for reviewer in ("Demo reviewer one", "Demo reviewer two"):
+        assert c.post(f"/api/cr/{cid}/review", json={"reviewer": reviewer, "state": "approved", "body": "Local generated rules reviewed"}).status_code == 200
+    prepared = c.post(f"/api/harness/requests/{cid}/prepare-release")
+    assert prepared.status_code == 200, prepared.text
+    run_id = prepared.json()["harness_runs"]["release"]
+    run = c.get(f"/api/harness/runs/{run_id}").json()["run"]
+    approved = c.post(f"/api/harness/runs/{run_id}/approve", json={"revision": run["revision"]})
+    assert approved.status_code == 200 and approved.json()["allowed"], approved.text
+    merged = c.post(f"/api/cr/{cid}/merge")
+    assert merged.status_code == 200, merged.text
+    full = c.get(f"/api/cr/{cid}").json()
     assert full["pr"]["github_url"].startswith("/demo/github/")
     assert c.get(full["pr"]["github_url"]).status_code == 200
     assert c.get(full["confluence"]["url"]).status_code == 200

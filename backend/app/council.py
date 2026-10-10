@@ -91,10 +91,10 @@ def cr_opinions(cr: dict) -> dict:
             if checks else "Test plan will be generated with the PR. ") + "Regression suite + generated cases cover the change.",
            "existing profiles that miss newly required fields"),
         _v("sec", "concern" if pii else "support",
-           f"Personal data in scope: {', '.join(pii)} — stays in our database, validated server-side, never logged."
+           f"Personal data in scope: {', '.join(pii)} — stays in our database, validated server-side, logging controls require verification."
            if pii else "No new personal data collected.", "PII in logs and analytics"),
-        _v("sre", "support", "Rollout is a rules update pushed to connected phones — instant, and Revert restores the previous "
-                             "rules in seconds.", "crash-free rate in Crashlytics for 1 h after deploy"),
+        _v("sre", "support", "Local merge updates the demo rules; connected-client delivery needs separate verification. Rollback is unavailable until a reviewed "
+                             "policy and verification path are configured.", "crash-free rate in Crashlytics for 1 h after deploy"),
     ]
     blocks = [o for o in ops if o["verdict"] == "block"]
     concerns = [o for o in ops if o["verdict"] == "concern"]
@@ -128,11 +128,11 @@ def incident_rca(inc: dict) -> dict:
     env = (d.get("environment") or "production")
     where = f"{d.get('file') or 'unknown file'}:{d.get('line') or '?'}"
     src = d.get("source") or "backend"
-    users = max(1, occ * 2 // 3)
+    users = "unknown"
     cls = classify(inc)
     sev = "SEV-1" if occ >= 20 or "onCreate" in (d.get("function") or "") else "SEV-2" if occ >= 5 else "SEV-3"
     ops = [
-        _v("sre", "support", f"{sev}: {occ} occurrence(s), ~{users} user(s) affected in {env}. "
+        _v("sre", "support", f"{sev}: {occ} occurrence(s), {users} user(s) affected in {env}. "
                              f"{'Every app launch crashes — highest priority.' if 'onCreate' in (d.get('function') or '') else 'Isolated to one action.'}",
            "crash-free users back above 99.5%"),
         _v("arch", "support", f"Root cause: `{d.get('exc_type')}` in `{d.get('function')}()` at `{where}`. "

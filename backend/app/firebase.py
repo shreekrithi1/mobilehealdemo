@@ -33,9 +33,10 @@ log = logging.getLogger("mobileheal.firebase")
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 BQ = "https://bigquery.googleapis.com/bigquery/v2"
-# Running a query is a BigQuery *job*; Google refuses jobs with only bigquery.readonly ("insufficient authentication
-# scopes"), so the bigquery scope is required. MobileHeal still only ever runs SELECT queries.
-SCOPES = ["openid", "email", "https://www.googleapis.com/auth/bigquery",
+# jobs.query accepts read-only OAuth scopes; IAM still requires bigquery.jobs.create (Job User)
+# and table data access (Data Viewer). Keep OAuth read-only and restrict IAM to exported data.
+# https://docs.cloud.google.com/bigquery/docs/reference/rest/v2/jobs/query
+SCOPES = ["openid", "email", "https://www.googleapis.com/auth/bigquery.readonly",
           "https://www.googleapis.com/auth/cloud-platform.read-only"]
 SA_SCOPES = SCOPES[2:]
 ID_RE = re.compile(r"^[a-z][a-z0-9-]{4,61}[a-z0-9]$")          # GCP project id
@@ -112,7 +113,7 @@ def bq_rows(resp: dict) -> List[dict]:
 
 
 # ---------------------------------------------------------------- Google sign-in via gcloud (no keys, no OAuth app)
-GCLOUD_SCOPES = "https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/bigquery.readonly,openid,https://www.googleapis.com/auth/userinfo.email"
+GCLOUD_SCOPES = "https://www.googleapis.com/auth/cloud-platform.read-only,https://www.googleapis.com/auth/bigquery.readonly,openid,https://www.googleapis.com/auth/userinfo.email"
 
 
 def adc_path() -> Path:

@@ -21,6 +21,12 @@ The story is a customer profile screen. A product owner wants a softer notificat
 
 *Delivery follows Requirements → UX design → Code → Pull request → Tests → Local merge. Human decisions guard the Manual-mode gates. A crash or data issue enters a recovery path: detect and diagnose, propose a fix or corrective action, review and verify, then replay the failing request or rescan the data. Data issues can also require a customer to update a record.*
 
+### Follow the animated workflow
+
+Open [Workflow studio](http://localhost:8000/workflow-map) to follow five starting signals: a change request, Firebase crash, issue email, internal Jira defect or BA requirement. Choose a passing or rework scenario, then start, pause or replay it. Static view supports reduced motion. This diagram is a labeled sample; unconfigured connectors use mock signals, and the animation does not represent a live agent run.
+
+![Animated workflow studio with five sources, parallel review gates and rework paths](assets/workflow-studio-desktop.jpg)
+
 ### What you will learn
 
 - Translate a business request into inspectable field and UI rules.
@@ -186,6 +192,18 @@ Select **Test in preview →** or the **Tests** tab. This exercise generates a b
 
 Return to **Code review** and satisfy the required approvals using the displayed roles. Then open **Pull request**. The merge checklist identifies outstanding reviews, tests or branch updates. Resolve each item; do not use an override just to make the demonstration green.
 
+Open **Agent control center** from the request’s release-evidence link and select **Run verification**. Inspect each recorded stage, its reviewer receipts, required checks, and blockers. The score measures evidence coverage, not the probability that the product is correct. A high score never overrides a failed mandatory check.
+
+![Agent control center displaying an actual recorded stage, confidence components and reviewer receipts](assets/agent-center-desktop.png)
+
+*The recorded stage is separate from the animated sample. Business, Developer and Architect views expose progressively more detail.*
+
+![Release gate blocked by missing acceptance and reviewer evidence](assets/release-gate-desktop.png)
+
+*An actual blocked release: successful command receipts alone do not satisfy missing reviews or human approval. Resolve the listed blockers before continuing.*
+
+For this local tutorial, approve the current release revision using the clearly labeled simulated human approval. Changing the artifact invalidates that approval and requires fresh verification. Return to the request after all recorded gates pass.
+
 Once all required gates are satisfied, select **Merge pull request**. In demo mode this merges into the isolated workspace's local base branch. It does not ship to an app store or deploy your production service.
 
 ![Merged request showing all six delivery stages complete](assets/07-merged.jpg)
@@ -223,7 +241,7 @@ Choose **Customer without a name** if available. Use the scenario's run control.
 
 Follow the displayed sequence: failure, incident, analysis, reproduction, fix proposal, checks, review, merge, and verification. Open **Incidents** to inspect the defect and its timeline.
 
-In Manual mode, inspect the analysis before selecting **Approve auto-fix** when that action is offered. Review the generated patch and regression test. Finish the incident's review and testing gates before merging the fix. Replay the same scenario to verify the original symptom is gone.
+In Manual mode, inspect the analysis before selecting **Approve auto-fix** when that action is offered. Review the generated patch and regression test. Finish the incident’s two simulated human reviews and testing gates. Open its release evidence in **Agent control center**, run verification, inspect the captured-input replay and regression receipts, and approve the current release revision. Then merge locally and replay the same scenario to verify the original symptom is gone. The supported local replay is the supplied canonical missing-name greeting repair; other source changes and native scenarios remain blocked until a suitable isolated verification runtime is available.
 
 ### What counts as evidence?
 

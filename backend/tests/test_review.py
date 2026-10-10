@@ -1,5 +1,5 @@
 """PR review: branches against main, 2 reviewer agents per platform, 2-approval policy, GitHub/GitLab sync,
-manual vs Autopilot delivery."""
+manual review and human release gates in both delivery modes."""
 import importlib
 import os
 import shutil
@@ -128,21 +128,26 @@ def test_manual_pr_is_branched_from_main_reviewed_and_gated(manual):
     assert pr["compare"]["merge_base"] == main_tip
     r = cr["review"]
     assert r["platforms"] == ["android", "ios"] and len(r["reviewers"]) == 4
-    assert r["status"] == "approved", r
+    assert r["status"] == "pending" and r["humans_required"] == 2, r
     assert {p: v["approvals"] for p, v in r["per_platform"].items()} == {"android": 2, "ios": 2}
-    # manual: review alone doesn't merge — test gate + a person's merge
+    # Manual review requires two people; release evidence remains mandatory.
     time.sleep(0.5)
     assert c.get(f"/api/cr/{cr['id']}").json()["status"] == "pr_open"
     # a human requesting changes blocks the merge
     assert c.post(f"/api/cr/{cr['id']}/review", json={"state": "changes_requested", "body": "Hold for copy review"}).status_code == 200
-    c.post(f"/api/cr/{cr['id']}/test", json={"passed": True, "override": True, "notes": "verified on Pixel and iPhone"})
+    assert c.post(f"/api/cr/{cr['id']}/test", json={"passed": True, "override": True, "notes": "verified on Pixel and iPhone"}).status_code == 409
     r = c.post(f"/api/cr/{cr['id']}/merge")
-    assert r.status_code == 409 and "Code review" in r.json()["detail"]
+    assert r.status_code == 409
+    assert c.get(f"/api/cr/{cr['id']}").json()["review"]["status"] == "changes_requested"
     c.post(f"/api/cr/{cr['id']}/review", json={"state": "approved", "body": "Copy approved"})
     r = c.post(f"/api/cr/{cr['id']}/merge")
-    assert r.status_code == 200, r.text
-    log = subprocess.run(["git", "log", "--oneline", "-1", "main"], cwd=root, capture_output=True, text=True).stdout
-    assert "CR-1" in log
+    assert r.status_code == 409, r.text
+    c.post(f"/api/cr/{cr['id']}/review", json={"reviewer": "Second reviewer", "state": "approved", "body": "Independent review complete"})
+    assert c.get(f"/api/cr/{cr['id']}").json()["review"]["status"] == "approved"
+    # Production identity is unavailable: a human review cannot waive the harness gate.
+    assert c.post(f"/api/harness/requests/{cr['id']}/prepare-release").status_code == 403
+    assert c.post(f"/api/cr/{cr['id']}/merge").status_code == 409
+    assert "city: required" not in (root / "backend/requirements.txt").read_text()
 
 
 def test_settings_validation(manual):
@@ -152,15 +157,16 @@ def test_settings_validation(manual):
 
 
 # ---------------------------------------------------------------- E2E: autopilot
-def test_autopilot_takes_a_requirement_to_production(manual):
+def test_autopilot_prepares_a_requirement_but_requires_human_release(manual):
     c, root = manual
     assert c.post("/api/delivery-mode", json={"mode": "autopilot"}).json()["mode"] == "autopilot"
     cr = c.post("/api/cr", json={"title": "City required", "description": "", "spec_text": SPEC + "city: required\n"}).json()
-    cr = wait(c, cr["id"], {"merged"})
+    cr = wait(c, cr["id"], {"pr_open"})
     actors = [e["actor"] for e in cr["timeline"]]
     assert "Autopilot" in actors and cr["pr"]["branch"].startswith("change/")
     assert any(e["actor"] == "Android Architecture Reviewer" for e in cr["timeline"])
-    assert "city: required" in (root / "backend/requirements.txt").read_text()
+    assert c.post(f"/api/harness/requests/{cr['id']}/prepare-release").status_code == 403
+    assert "city: required" not in (root / "backend/requirements.txt").read_text()
 
 
 def test_autopilot_heals_incident_end_to_end(manual):
@@ -172,8 +178,8 @@ def test_autopilot_heals_incident_end_to_end(manual):
     c.post("/api/client-errors", json={"platform": "android", "endpoint": f"/api/profiles/{pid}/contact", "status": 500,
                                        "incident": key})
     inc = next(x for x in c.get("/api/cr").json() if x.get("key") == key)
-    inc = wait(c, inc["id"], {"merged", "needs_engineer"})
-    assert inc["status"] == "merged", inc.get("error")
+    inc = wait(c, inc["id"], {"pr_open", "needs_engineer"})
+    assert inc["status"] == "pr_open", inc.get("error")
     assert inc["pr"]["branch"].startswith("hotfix/") and inc["approval"]["by"] == "Autopilot"
     assert inc["review"]["status"] == "approved"
 
@@ -193,10 +199,12 @@ def test_reviews_posted_to_remote_and_human_comments_synced_back(demo):
     assert any(cm["source"] == "github" and cm["author"] == "sam.ios" for cm in rv_["comments"])
     assert c.post(f"/api/cr/{cr['id']}/review/sync").json()["synced"] == 0      # idempotent
     c.post(f"/api/cr/{cr['id']}/review/simulate-remote", json={"author": "sam.ios", "body": "/approve iOS looks good now"})
+    assert c.get(f"/api/cr/{cr['id']}").json()["review"]["status"] == "pending"
+    c.post(f"/api/cr/{cr['id']}/review", json={"reviewer": "Second reviewer", "state": "approved", "body": "Both platforms reviewed"})
     assert c.get(f"/api/cr/{cr['id']}").json()["review"]["status"] == "approved"
 
 
-def test_autopilot_rebases_a_stale_branch_and_ships_both(manual):
+def test_autopilot_keeps_both_branches_open_without_release_approval(manual):
     c, root = manual
     a = c.post("/api/cr", json={"title": "City required", "description": "", "spec_text": SPEC + "city: required\n"}).json()
     b = c.post("/api/cr", json={"title": "Green button", "description": "", "spec_text": SPEC + "ui.button_color = #079455\n"}).json()
@@ -204,11 +212,13 @@ def test_autopilot_rebases_a_stale_branch_and_ships_both(manual):
         c.post(f"/api/cr/{x['id']}/approve")
     wait(c, a["id"], {"pr_open"}), wait(c, b["id"], {"pr_open"})
     c.post("/api/delivery-mode", json={"mode": "autopilot"})        # picks up both open PRs
-    a, b = wait(c, a["id"], {"merged"}, 150), wait(c, b["id"], {"merged"}, 150)
+    a, b = wait(c, a["id"], {"pr_open"}), wait(c, b["id"], {"pr_open"})
     live = (root / "backend/requirements.txt").read_text()
-    assert "city: required" in live and "#079455" in live
-    rebased = [x for x in (a, b) if x.get("autopilot_rebases")]
-    assert len(rebased) == 1 and any("updating the branch" in e["text"] for e in rebased[0]["timeline"])
+    assert "city: required" not in live and "#079455" not in live
+    assert all(x["status"] == "pr_open" for x in (a, b))
+    for x in (a, b):
+        assert c.post(f"/api/harness/requests/{x['id']}/prepare-release").status_code == 403
+
 
 
 def test_three_way_spec_merge():
@@ -251,15 +261,21 @@ def _flaky_checks(monkeypatch, fail_times):
     return seen
 
 
-def test_autopilot_fixes_failing_checks_without_asking(manual, monkeypatch):
+def test_autopilot_fixes_checks_but_still_requires_release_approval(manual, monkeypatch):
     c, root = manual
     seen = _flaky_checks(monkeypatch, 1)
     c.post("/api/delivery-mode", json={"mode": "autopilot"})
     cr = c.post("/api/cr", json={"title": "City optional", "description": "", "spec_text": SPEC + "city: optional\n"}).json()
-    cr = wait(c, cr["id"], {"merged"}, 150)
+    t0 = time.time()
+    while time.time() - t0 < 30:
+        cr = c.get(f"/api/cr/{cr['id']}").json()
+        if seen["n"] == 2 and cr["status"] == "pr_open":
+            break
+        time.sleep(0.2)
+    assert cr["status"] == "pr_open"
     texts = [e["text"] for e in cr["timeline"] if e["actor"] == "Autopilot"]
     assert any("fixing it automatically (attempt 1/3)" in t for t in texts), texts
-    assert not any(t.startswith("paused") for t in texts)
+    assert c.post(f"/api/harness/requests/{cr['id']}/prepare-release").status_code == 403
     assert seen["n"] == 2 and "Cannot infer type" in (seen["feedback"][1] or "")
 
 
@@ -269,9 +285,11 @@ def test_autopilot_pauses_after_three_fix_attempts(manual, monkeypatch):
     c.post("/api/delivery-mode", json={"mode": "autopilot"})
     cr = c.post("/api/cr", json={"title": "City optional", "description": "", "spec_text": SPEC + "city: optional\n"}).json()
     t0 = time.time()
-    while time.time() - t0 < 200:
+    while time.time() - t0 < 30:
         cr = c.get(f"/api/cr/{cr['id']}").json()
         if cr.get("autopilot_paused"):
             break
         time.sleep(0.5)
     assert "after 3 automatic fix attempts" in cr["autopilot_paused"] and cr["status"] == "pr_open"
+    assert cr["autopilot_fixes"] == 3
+    assert any(x["status"] == "fail" for x in cr["checks"])

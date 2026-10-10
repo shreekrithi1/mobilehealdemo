@@ -207,6 +207,8 @@ class Settings:
 
     # ------------------------------------------------------------ audit
     def audit(self, actor: str, action: str, target: str = "", detail: str = ""):
+        from .harness_redaction import redact
+        actor, action, target, detail = [redact(v) for v in (actor, action, target, detail)]
         with self.db._lock:
             self.db._conn.execute("INSERT INTO audit_log(actor, action, target, detail) VALUES (?,?,?,?)",
                                   (actor, action, target, detail[:500]))
@@ -302,6 +304,8 @@ class AI:
         return self._http(url, payload, headers)
 
     def text(self, system: str, user: str, max_tokens: int = 2000) -> str:
+        from .harness_redaction import redact
+        system, user = redact(system), redact(user)
         if not self.available:
             raise AIError("Parser mode — no model API key configured. Add one in Settings.")
         t0 = time.perf_counter()

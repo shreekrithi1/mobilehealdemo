@@ -271,6 +271,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="MobileHeal", lifespan=lifespan)
+from .harness_api import router as harness_router
+app.include_router(harness_router)
 from .security import SecurityMiddleware  # noqa: E402
 from . import connectors  # noqa: E402
 app.add_middleware(SecurityMiddleware)
@@ -1718,6 +1720,34 @@ def cr_restart(cid: int):
 @app.post("/api/cr/{cid}/close")
 def cr_close(cid: int):
     return _wf(app.state.wf.close, cid)
+
+
+@app.get("/agents")
+def agent_center_page():
+    return FileResponse(STATIC / "agent-center.html")
+
+@app.get("/static/agent-center.css")
+def agent_center_css():
+    return FileResponse(STATIC / "agent-center.css", media_type="text/css")
+
+@app.get("/static/agent-center.js")
+def agent_center_js():
+    return FileResponse(STATIC / "agent-center.js", media_type="application/javascript")
+
+
+@app.get("/workflow-map")
+def workflow_map_page():
+    return FileResponse(STATIC / "workflow-map.html")
+
+
+@app.get("/static/workflow-map.css")
+def workflow_map_css():
+    return FileResponse(STATIC / "workflow-map.css", media_type="text/css")
+
+
+@app.get("/static/workflow-map.js")
+def workflow_map_js():
+    return FileResponse(STATIC / "workflow-map.js", media_type="application/javascript")
 
 
 @app.get("/workflow")

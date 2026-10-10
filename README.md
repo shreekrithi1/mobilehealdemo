@@ -16,6 +16,15 @@ bash run-tutorial.sh
 bash run-application.sh
 ```
 
+## Product controls
+
+- Agent control center: `/agents` — actual stage records, evidence confidence, reviewer receipts and explicit local human approval.
+- Workflow studio: `/workflow-map` — five-source animated sample with pass/rework routing, pause, replay and static view.
+- [Agent harness](docs/AGENT-HARNESS.md): durable execution and review contracts.
+- [Guardrails](docs/GUARDRAILS.md): evidence scores, mandatory gates and execution limits.
+- [Production design](docs/PRODUCTION.md) and [threat model](docs/THREAT-MODEL.md): deployment requirements and remaining boundaries.
+- [Five-slide pitch](pitch/output/MobileHeal-final.pptx): editable product and architecture presentation.
+
 ## What's inside
 
 - [Complete codelab](codelab/guide.md): setup, delivery, tests and merge, crash recovery, data health, native clients, integrations, troubleshooting and reset.
@@ -39,7 +48,7 @@ cd backend
 python -m pytest -q
 ```
 
-The inherited suite is not assumed green. See the verification record. The portal's generated contract/regression checks cover a selected subset and are distinct from this full command.
+The inherited suite is not assumed green. See the verification record. The release harness executes narrowly defined application-owned checks for supported local journeys. These are distinct from the inherited repository suite and native device verification.
 
 ## Native clients
 

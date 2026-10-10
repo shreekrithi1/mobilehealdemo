@@ -1656,8 +1656,8 @@ async function heal(){ await act(async()=>{ await api(`/api/incidents/${state.cr
 /* ---------------- actions ---------------- */
 async function act(fn, ok){ try { await fn(); if (ok) toast(ok); } catch(e){ toast(e.message); } }
 async function approve(){ await act(async()=>{ await api(`/api/cr/${state.cr.id}/approve`,{method:"POST"}); await refreshList(); await loadCR(state.cr.id,"code"); }, "Coding started"); }
-async function markTested(passed, override=false, notes=null){ await act(async()=>{ state.cr = await api(`/api/cr/${state.cr.id}/test`,{method:"POST",body:{notes:notes ?? (($("#t-notes")||{}).value||""),passed,override}}); if(!isInc(state.cr)) await loadTests(); await refreshList(); state.tab=passed?"pr":"test"; renderCR(); }, passed?(isInc(state.cr)?"Fix approved — ready to merge":"Marked as tested — ready to merge"):"Feedback recorded"); }
-async function merge(){ await act(async()=>{ state.cr = await api(`/api/cr/${state.cr.id}/merge`,{method:"POST"}); await refreshList(); await refreshInfo(); renderCR(); }, isInc(state.cr)?"Fix merged and deployed":"Merged — change is live on phones"); }
+async function markTested(passed, override=false, notes=null){ await act(async()=>{ state.cr = await api(`/api/cr/${state.cr.id}/test`,{method:"POST",body:{notes:notes ?? (($("#t-notes")||{}).value||""),passed,override}}); if(!isInc(state.cr)) await loadTests(); await refreshList(); state.tab=passed?"pr":"test"; renderCR(); }, passed?(isInc(state.cr)?"Fix test results saved — inspect release evidence":"Test results saved — inspect release evidence"):"Feedback recorded"); }
+async function merge(){ await act(async()=>{ state.cr = await api(`/api/cr/${state.cr.id}/merge`,{method:"POST"}); await refreshList(); await refreshInfo(); renderCR(); }, isInc(state.cr)?"Fix merged into local demo":"Merged into local demo"); }
 async function updateBranch(){ await act(async()=>{ await api(`/api/cr/${state.cr.id}/update-branch`,{method:"POST"}); await loadCR(state.cr.id,"code"); }, "Regenerating against latest rules"); }
 async function cxOwners(cr){
   try { const c = await api(`/api/cr/${cr.id}/council`); c.crId = cr.id; state.council = c;
@@ -1677,7 +1677,7 @@ function tCouncil(cr){
       <div class="cn-grid">${c.opinions.map(o=>`<div class="card cn-card"><div style="display:flex;justify-content:space-between;align-items:center"><b>${o.icon} ${esc(o.name)}</b><span class="v ${o.verdict}">${esc(o.verdict)}</span></div>
         <div style="font-size:13.5px;margin:6px 0">${md(o.opinion)}</div>${o.watch?`<div class="hint" style="margin:0">👁 Watching: ${esc(o.watch)}</div>`:""}</div>`).join("")}</div>
       <h4 style="margin:14px 0 6px">Owners</h4><table class="st-tbl">${c.owners.map(o=>`<tr><td>${esc(o.step)}</td><td><b>${esc(o.owner)}</b></td></tr>`).join("")}</table>
-      <p class="hint">Production gate: <b>${c.prod_gate==="hil"?"Human-in-the-loop switch":"Autopilot deploys"}</b> · change it in Settings → Delivery &amp; approvals.</p>
+      <p class="hint">Release requires recorded evidence and explicit human approval. Production release is unavailable until authenticated identity and deployment controls are configured.</p>
     </div></div>`;
 }
 async function hilDeploy(el){ const demo = state.settings && (state.settings.demo_isolated || state.settings.demo_mode === "on"); if (!confirm(demo ? `Merge ${state.cr.key} into the local demo project now?` : `Deploy ${state.cr.key} to production now?`)) { el.checked = false; return; }
@@ -1689,7 +1689,7 @@ function flowActions(cr){
   if (running) b.push(`<button class="btn sm" onclick="flowAct('stop')" title="Halt agents and Autopilot for this item">⏸ Stop</button>`);
   if (["stopped","failed","closed","needs_engineer","reverted","pr_open","design_review"].includes(st))
     b.push(`<button class="btn sm" onclick="flowAct('restart')" title="Run the whole workflow again on the latest main">↻ Restart</button>`);
-  if (st === "merged") b.push(`<button class="btn sm danger" onclick="flowAct('revert')" title="Undo this change on main and push the previous version live">↶ Revert</button>`);
+  if (st === "merged") b.push(`<button class="btn sm" disabled title="Rollback needs a trusted policy, fresh verification and mutation reconciliation">↶ Rollback unavailable</button>`);
   return b.join("");
 }
 async function flowAct(kind){

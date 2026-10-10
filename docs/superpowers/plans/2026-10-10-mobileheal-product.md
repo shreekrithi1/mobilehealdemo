@@ -125,3 +125,11 @@
 ## Execution choice
 
 Recommended: subagent-driven implementation with independent task reviews because a gate bypass or duplicated mutation could invalidate the product's central safety claim. Execute tasks in order; shared interfaces and workflow integration require sequential coordination. The alternative is native execution in this chat with a whole-branch review after implementation.
+
+## Approved expansion to Task 6
+
+Create `backend/app/static/workflow-map.html`, `.css` and `.js` as an original animated five-source diagram. Add a discoverable workflow link from the application shell and tutorial. Test source switching, pause/replay, rework, keyboard and reduced-motion/static behavior; show sample mode and connector status explicitly. Apply shared design improvements to the existing shell and page components, inspect every named existing route and preserve their functional actions. Each UI task receives independent review. The expanded plan and reviewer-based execution were explicitly approved by the user.
+
+## As-built completion record
+
+The approved local product, expanded workflow/UI, production design and five-slide deck are implemented and independently reviewed. See docs/IMPLEMENTATION-LEDGER.md and docs/VERIFICATION.md for exact evidence and limits. End-to-end tests live in test_harness_workflows.py plus migrated flow-control/demo tests; diagrams are editable native SVG in the workflow page, Mermaid in technical documents and native objects in the deck. The final deck path is pitch/output/MobileHeal-final.pptx; PDF export was unavailable. Rollback fails closed pending its own trusted policy and verification. Production identity/native isolation/live integrations remain deployment prerequisites. The checklist above preserves the original plan rather than implying those deployment prerequisites were implemented.

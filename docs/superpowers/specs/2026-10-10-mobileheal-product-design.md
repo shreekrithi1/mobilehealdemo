@@ -108,3 +108,9 @@ Provide a threat model, configuration reference, backup/restore and rollback run
 5. Deployment and adoption: local product, production architecture, pilot acceptance criteria and remaining integration validation.
 
 White backgrounds, restrained teal/navy accents, editable diagrams and simple language. Speaker notes provide developer/architect detail and status disclosures. Deck claims must match the final verified implementation.
+
+## Approved visual scope expansion
+
+The user approved five intake sources: new change request, Firebase crash, issue email, internal Jira defect and BA requirements. All converge into intake/classification and the applicable delivery or recovery pipeline. The opening animated diagram supports source selection, start/pause/replay, rework routing, static mode and reduced motion. Animation of sample data is visibly distinct from live execution. Unconfigured connectors expose labeled mock examples rather than empty or misleading live status.
+
+Refresh all existing application routes with one consistent navigation, breadcrumbs, spacing, typography, focus states and loading/empty/error/success treatment. Preserve existing capabilities and inspect home, requirements/new request/design/PR/tests, incidents, data health, monitor, crash sources/demo, App Studio, settings and audit. Rating 10/10 is an aspiration, not a measured guarantee. The LinkedIn reference could not be accessed; the user-provided earlier diagram establishes the visual direction.

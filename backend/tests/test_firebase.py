@@ -96,7 +96,8 @@ def test_service_account_jwt_is_signed_and_exchanged(monkeypatch):
     h, c, sig = seen["body"]["assertion"].split(".")
     pad = lambda x: base64.urlsafe_b64decode(x + "=" * (-len(x) % 4))
     claims = json.loads(pad(c))
-    assert claims["iss"] == "mh@acme.iam.gserviceaccount.com" and "bigquery.readonly" in claims["scope"]
+    assert claims["iss"] == "mh@acme.iam.gserviceaccount.com"
+    assert set(claims["scope"].split()) == {"https://www.googleapis.com/auth/bigquery.readonly", "https://www.googleapis.com/auth/cloud-platform.read-only"}
     key.public_key().verify(pad(sig), f"{h}.{c}".encode(), padding.PKCS1v15(), hashes.SHA256())   # raises if bad
 
 
@@ -192,7 +193,19 @@ def test_merged_branch_is_kept_and_demo_change_can_be_copied_to_project(tmp_path
         t0 = time.time()
         while c.get(f"/api/cr/{cr['id']}").json()["status"] != "pr_open" and time.time() - t0 < 90:
             time.sleep(0.3)
-        c.post(f"/api/cr/{cr['id']}/test", json={"passed": True, "override": True, "notes": "verified in the demo"})
+        for case in c.get(f"/api/cr/{cr['id']}/tests").json()["cases"]:
+            assert c.post(f"/api/tests/{case['id']}/runs", json={"cr_id": cr['id'], "status": "passed", "steps": []}).status_code == 201
+        assert c.post(f"/api/cr/{cr['id']}/test", json={"passed": True, "notes": "verified in the demo"}).status_code == 200
+        assert c.post(f"/api/cr/{cr['id']}/merge").status_code == 409
+        for reviewer in ("Demo reviewer one", "Demo reviewer two"):
+            assert c.post(f"/api/cr/{cr['id']}/review", json={"reviewer": reviewer, "state": "approved", "body": "Local rules change reviewed"}).status_code == 200
+        prepared = c.post(f"/api/harness/requests/{cr['id']}/prepare-release")
+        assert prepared.status_code == 200, prepared.text
+        run_id = prepared.json()["harness_runs"]["release"]
+        run = c.get(f"/api/harness/runs/{run_id}").json()["run"]
+        approved = c.post(f"/api/harness/runs/{run_id}/approve", json={"revision": run["revision"]})
+        assert approved.status_code == 200, approved.text
+        assert approved.json()["allowed"], approved.text
         assert c.post(f"/api/cr/{cr['id']}/merge").status_code == 200
         full = c.get(f"/api/cr/{cr['id']}").json()
         branches = subprocess.run(["git", "branch"], cwd=ws, capture_output=True, text=True).stdout
@@ -209,6 +222,7 @@ def test_google_signin_via_gcloud_credentials(tmp_path, monkeypatch):
     from app import firebase as fb
     creds = tmp_path / "adc.json"
     monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", str(creds))
+    assert set(fb.GCLOUD_SCOPES.split(",")) == {"https://www.googleapis.com/auth/cloud-platform.read-only", "https://www.googleapis.com/auth/bigquery.readonly", "openid", "https://www.googleapis.com/auth/userinfo.email"}
     assert fb.adc_info() is None
     creds.write_text(_j.dumps({"type": "authorized_user", "client_id": "cid", "client_secret": "cs",
                                "refresh_token": "rt", "account": "naren@example.com"}))

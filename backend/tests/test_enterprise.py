@@ -66,7 +66,7 @@ def test_plain_english_without_key(env):
     assert "phone_number: required" in r["spec_text"] and "ui.button_label = Update profile" in r["spec_text"]
 
 
-def test_zephyr_csv_import_and_gate_with_override(env):
+def test_zephyr_csv_import_and_gate_rejects_override(env):
     c, _ = env
     cr = c.post("/api/cr", json={"title": "Phone", "spec_text": "name: required\nemail: required\nphone_number: required\n",
                                  "requirement_text": "Collect phone numbers"}).json()
@@ -78,13 +78,15 @@ def test_zephyr_csv_import_and_gate_with_override(env):
     sources = {x["source"] for x in t["cases"]}
     assert {"zephyr", "generated"} <= sources            # imported cases kept, generated ones added
     assert t["gate"]["all_passed"] is False
-    # can't mark tested without runs; override needs a reason
+    # Cannot mark tested without runs; override cannot waive harness evidence.
     assert c.post(f"/api/cr/{cr['id']}/test", json={"passed": True}).status_code == 409
     assert c.post(f"/api/cr/{cr['id']}/test", json={"passed": True, "override": True, "notes": "short"}).status_code == 409
     r = c.post(f"/api/cr/{cr['id']}/test", json={"passed": True, "override": True,
                                                   "notes": "Hotfix approved by product owner, tests run on device"})
-    assert r.status_code == 200 and r.json()["override"]["by"]
-    assert c.post(f"/api/cr/{cr['id']}/merge").status_code == 200
+    assert r.status_code == 409 and "cannot be overridden" in r.json()["detail"]
+    # Test overrides do not waive independent human review or release approval.
+    assert c.post(f"/api/cr/{cr['id']}/merge").status_code == 409
+    assert c.post(f"/api/harness/requests/{cr['id']}/prepare-release").status_code == 403
 
 
 def test_runs_record_and_datasets(env):
