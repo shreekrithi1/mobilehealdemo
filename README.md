@@ -9,23 +9,22 @@ Requires **Python 3.10+ (3.12 recommended)** and **Git**. Use macOS, Linux, or W
 ```bash
 git clone https://github.com/shreekrithi1/mobilehealdemo.git
 cd mobilehealdemo
-python3 -m venv backend/.venv
-source backend/.venv/bin/activate
-python -m pip install -r backend/pip-requirements.lock.txt
-python scripts/demo.py
+bash start.sh
 ```
 
-Open **http://localhost:8000/#new**. Keep this terminal running. The launcher creates `.mobileheal/demo-workspace` and a separate demo database; changes and merges happen in that workspace. It removes model/token environment variables from the server process to use simulated integrations.
+One command creates the virtual environment, installs required libraries, starts the backend (which also serves the web app), starts the codelab, verifies both servers, and opens both browser pages. Keep the terminal running; Ctrl+C stops both servers.
 
-In a second terminal, from the repository root:
+App: **http://localhost:8000/#new** · Guide: **http://localhost:8080/?appPort=8000#0**.
+
+The launcher uses an isolated `.mobileheal/demo-workspace` and a separate demo database. No API keys are needed.
+
+If ports are occupied:
 
 ```bash
-bash scripts/serve-guide.sh
+MOBILEHEAL_PORT=8010 CODELAB_PORT=8081 bash start.sh
 ```
 
-Open **http://localhost:8080/** for the codelab. Stop either server with Ctrl+C.
-
-Port 8000 occupied? Run `MOBILEHEAL_PORT=8010 python scripts/demo.py`, then open `http://localhost:8010/#new`. Use `http://localhost:8080/?appPort=8010` to point the guide's **Open demo** button and application links to that instance. Adjust the guide's curl commands to your selected port.
+Use `PYTHON=python3.12` to choose an interpreter, or `OPEN_BROWSER=0` to skip opening browser tabs. Python and Git must already be installed.
 
 ## What's inside
 

@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 import sys
 
@@ -43,11 +44,25 @@ def main():
     port = int(env.get('MOBILEHEAL_PORT', '8000'))
     print(f'MobileHeal demo: http://localhost:{port}/#new', flush=True)
     print(f'Isolated workspace: {WORKSPACE}', flush=True)
+    server = subprocess.Popen([sys.executable, '-m', 'uvicorn', 'app.main:app', '--host',
+                               '127.0.0.1', '--port', str(port)], cwd=ROOT / 'backend', env=env)
+    def stop_server(signum, frame):
+        server.terminate()
+    signal.signal(signal.SIGTERM, stop_server)
     try:
-        subprocess.run([sys.executable, '-m', 'uvicorn', 'app.main:app', '--host',
-                        '127.0.0.1', '--port', str(port)], cwd=ROOT / 'backend', env=env, check=True)
+        result = server.wait()
+        if result:
+            raise SystemExit(result)
     except KeyboardInterrupt:
-        pass
+        server.terminate()
+    finally:
+        if server.poll() is None:
+            server.terminate()
+        try:
+            server.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            server.kill()
+            server.wait()
 
 
 if __name__ == '__main__':

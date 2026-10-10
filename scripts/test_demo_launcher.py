@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 spec = importlib.util.spec_from_file_location('demo_launcher', Path(__file__).with_name('demo.py'))
 launcher = importlib.util.module_from_spec(spec)
@@ -25,6 +25,7 @@ class LauncherTest(unittest.TestCase):
             workspace = root / '.mobileheal/demo-workspace'
             invoked = []
             real_run = subprocess.run
+            real_popen = subprocess.Popen
             def run(args, **kwargs):
                 if 'uvicorn' in args:
                     invoked.append((args, kwargs))
@@ -32,6 +33,8 @@ class LauncherTest(unittest.TestCase):
                 return real_run(args, **kwargs)
             with patch.object(launcher, 'ROOT', root), patch.object(launcher, 'WORKSPACE', workspace), \
                  patch.object(launcher.subprocess, 'run', side_effect=run), \
+                 patch.object(launcher.subprocess, 'Popen', side_effect=lambda args, **kwargs: (invoked.append((args, kwargs)) or Mock(wait=Mock(return_value=0), poll=Mock(return_value=0))) if 'uvicorn' in args else real_popen(args, **kwargs)), \
+                 patch.object(launcher.signal, 'signal'), \
                  patch.dict(os.environ, {'OPENAI_API_KEY':'fake-test-key','GITHUB_TOKEN':'fake-token','MOBILEHEAL_PORT':'8010'}):
                 launcher.main()
             self.assertTrue((workspace / '.git').is_dir())

@@ -48,90 +48,55 @@ A local MobileHeal workspace with a reviewed profile-screen change. The web work
 Use a terminal and a modern browser on macOS, Linux, or Windows with WSL. You do not need an LLM subscription, cloud project, or API key for the core lab. Keep this guide and MobileHeal in separate tabs.
 
 <!-- step: Install the demo | 5 | SETUP -->
-## Get a clean working copy
+## Install and launch with one command
 
-Use Python 3.10 or newer; Python 3.12 is recommended. Git is required because the delivery workflow creates branches and commits. Native SDKs are optional.
+You need **Python 3.10+ (3.12 recommended)** and **Git** on macOS, Linux, or Windows with WSL. Native SDKs are optional. No API key or cloud account is needed.
 
-### 1 · Check your tools
-
-```bash
-python3 --version
-git --version
-```
-
-If Python reports 3.9 or older, install a newer Python from [python.org](https://www.python.org/downloads/). On macOS, `python3` can still point to the system interpreter after installation; use `python3.12` in the environment creation command below if needed.
-
-### 2 · Clone the lab
+Clone the repository once:
 
 ```bash
 git clone https://github.com/shreekrithi1/mobilehealdemo.git
 cd mobilehealdemo
 ```
 
-Already have the local folder? Open a terminal in that folder instead. All subsequent commands run from the repository root unless a step says otherwise.
-
-### 3 · Create a virtual environment
+From the repository folder, run:
 
 ```bash
-python3 -m venv backend/.venv
-source backend/.venv/bin/activate
-python -m pip install -r backend/pip-requirements.lock.txt
+bash start.sh
 ```
 
-In WSL, use these same shell commands. In a native Windows PowerShell session, activation is `backend\.venv\Scripts\Activate.ps1`; the provided shell scripts are intended for macOS, Linux, or WSL.
+The script creates `backend/.venv`, installs the locked Python libraries, starts the backend and web portal, starts this guide, checks both servers, and opens both pages. The web portal is served by the backend, so it needs no separate frontend installation.
 
-> CHECKPOINT: Installation ends without an error, and `python --version` reports 3.10 or newer inside the activated environment. Install from `pip-requirements.lock.txt` (the verified dependency snapshot). The other `requirements.txt` is the application's business-rules specification, not a pip manifest.
+Keep this terminal open. **Ctrl+C stops both servers.** Run the same command next time; it reuses the environment and demo workspace.
 
-### 4 · Open this guide locally
+> CHECKPOINT: The script prints the application and codelab URLs after both servers respond. The portal shows Demo mode and Parser mode.
 
-In a second terminal, from the repository root:
+<!-- step: Start and verify | 2 | SETUP -->
+## Your running demo
+
+The previous command has already started everything. Open [the web app](http://localhost:8000/#new) and keep this guide in another tab.
+
+The launcher creates `.mobileheal/demo-workspace` and initializes Git in that copy. Generated changes and merges happen there. The separate database is `backend/mobileheal-demo.db`.
+
+### If a port is already occupied
+
+Choose free ports and run the same script:
 
 ```bash
-bash scripts/serve-guide.sh
+MOBILEHEAL_PORT=8010 CODELAB_PORT=8081 bash start.sh
 ```
 
-Open [localhost:8080](http://localhost:8080/). The guide uses local assets and has no JavaScript library or font CDN dependency.
+The printed guide URL includes the application port, so its app links point to the correct instance. The existing application is left running.
 
-<!-- step: Start and verify | 3 | SETUP -->
-## Start an isolated instance
-
-In the terminal with the virtual environment activated:
+### Optional launcher settings
 
 ```bash
-python scripts/demo.py
+PYTHON=python3.12 OPEN_BROWSER=0 bash start.sh
 ```
 
-Leave this terminal running. Open [MobileHeal on localhost:8000](http://localhost:8000/#new).
+`PYTHON` selects the interpreter; `OPEN_BROWSER=0` leaves browser navigation to you. Install Python and Git first if the script reports either missing. The script installs application libraries inside the virtual environment.
 
-The launcher copies the project into `.mobileheal/demo-workspace`, initializes Git in that copy, and starts the backend on loopback. Its database is `backend/mobileheal-demo.db`. Agent-generated changes and local merges happen inside the copied workspace.
-
-### Already using port 8000?
-
-Stop this launch with Ctrl+C, then choose a free port:
-
-```bash
-MOBILEHEAL_PORT=8010 python scripts/demo.py
-```
-
-Open [localhost:8010](http://localhost:8010/#new). Screenshots in this guide were captured on port 8010 to keep the existing application on port 8000 running.
-
-### Verify the backend
-
-In another terminal:
-
-```bash
-curl -fsS http://localhost:8000/api/agent
-curl -fsS http://localhost:8000/api/demo-mode
-```
-
-Substitute 8010 if you changed ports. The first command returns the agent's rules and status. The second should contain `"on":true` and `"forced":true`.
-
-> CHECKPOINT: The portal loads, the demo indicator is visible, and the model indicator says Parser mode. No key is needed. If startup fails, read the final error in the server terminal before continuing.
-
-### Two terminals, two jobs
-
-- Application terminal: runs the backend, normally port 8000.
-- Guide terminal: serves these lessons, normally port 8080.
+> CHECKPOINT: The requirement form loads and the backend is ready. If startup fails, read the final error in the terminal and consult Troubleshoot.
 
 <!-- step: Orient yourself | 2 | DELIVERY -->
 ## One portal, two kinds of work
@@ -421,7 +386,7 @@ You have followed a requirement into explicit rules, a proposed screen, generate
 
 ### Stop the servers
 
-Press **Ctrl+C** in the application terminal and the guide terminal. Restart with the same commands to continue with the saved demo state.
+Press **Ctrl+C** in the launcher terminal to stop both servers. Run `bash start.sh` to continue with the saved demo state.
 
 ### Reset the isolated demo
 
@@ -431,7 +396,7 @@ This removes the demo workspace, local branches and demo database. Stop the serv
 bash start.command --demo-reset
 ```
 
-Start `python scripts/demo.py` again to create a fresh copy. The original Downloads application and its database are separate from this repository's isolated demo.
+Run `bash start.sh` again to create a fresh copy. The original Downloads application and its database are separate from this repository's isolated demo.
 
 ### Take the next step
 

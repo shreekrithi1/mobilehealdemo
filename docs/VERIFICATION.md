@@ -32,3 +32,7 @@ The focused contract/security/data-health suites (`test_rules_contract.py`, `tes
 - External integrations and model providers were not connected with real credentials. Demo PR links, Jira defects and Figma behavior are simulated.
 - Demo sample data starts additional background workflow items; issue counts can change as the lab runs.
 - The copied original technical reference can describe older behavior. The codelab follows the controls observed in this supplied version.
+
+## One-command launcher
+
+`start.sh` was exercised with Python 3.12 on ports 8020 and 8082: fresh virtual environment creation, locked dependency installation, backend and guide HTTP readiness, and credential-free demo mode all passed. Ctrl+C stopped both servers and both ports were released. Shell syntax, guide generation, whitespace checks and the updated isolation unit test passed. Browser auto-opening and Linux/WSL execution were not exercised.
