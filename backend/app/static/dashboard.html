@@ -40,18 +40,101 @@
   .phone .fld { border:1px solid #c8ccd2; border-radius:6px; padding:8px; font-size:13px; margin-bottom:8px; color:#667085; background:#fff }
   .phone .pbtn { border-radius:20px; padding:10px; text-align:center; font-weight:600 }
   .help code { background:var(--line); padding:1px 5px; border-radius:4px; font-size:12px } .help li { margin:2px 0 }
+
+.shell{display:grid;grid-template-columns:248px minmax(0,1fr);height:100%}
+.rail{background:var(--rail);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:12px 10px;overflow:auto;z-index:20}
+.rail-brand{display:flex;align-items:center;gap:10px;padding:6px 8px 12px}
+.rail-brand b{display:block;font-size:15px;letter-spacing:-.01em}.rail-brand small{color:var(--muted);font-size:11.5px}
+.rail-search{display:flex;align-items:center;gap:8px;width:100%;border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:7px 10px;color:var(--muted);cursor:pointer;margin-bottom:10px;font-size:13px}
+.rail-search kbd{margin-left:auto;font:11px var(--mono);border:1px solid var(--line);border-radius:5px;padding:0 5px;color:var(--faint)}
+.rail-label{font-size:11px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;padding:14px 10px 4px}
+.rail a{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:var(--fg);text-decoration:none;font-size:13.5px;font-weight:500;min-height:34px;transition:background .15s var(--ease)}
+.rail a svg{width:18px;height:18px;flex:none;color:var(--muted)}
+.rail a:hover{background:var(--rail-hover)} .rail a.on{background:var(--rail-on);color:var(--accent)} .rail a.on svg{color:var(--accent)}
+.rail .badge{margin-left:auto;background:var(--red);color:#fff;font-size:11px;font-weight:700;border-radius:99px;padding:0 7px;line-height:18px}
+.rail .badge.amber{background:#f79009}.rail .badge:empty{display:none}
+.rail-foot{margin-top:auto;padding:12px 8px 4px;border-top:1px solid var(--line);display:grid;gap:6px;font-size:12px;color:var(--muted)}
+.rail-foot div{display:flex;align-items:center;gap:7px}.dot8{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}.dot8.ok{background:#12b76a}.dot8.warn{background:#f79009}.dot8.err{background:var(--red)}
+.content{display:flex;flex-direction:column;min-width:0;height:100%}
+.crumbs{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);min-width:0;overflow:hidden;white-space:nowrap}
+.crumbs b{color:var(--fg);font-weight:600;overflow:hidden;text-overflow:ellipsis}.crumbs a{color:var(--muted);text-decoration:none}.crumbs a:hover{color:var(--fg)}
+.rail-toggle{display:none;border:0;background:none;font-size:20px;padding:4px 6px;cursor:pointer;color:var(--fg)}
+.avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#5ac8fa,#0a6cff);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none;cursor:pointer;text-decoration:none}
+@media (max-width:980px){.shell{grid-template-columns:1fr}.rail{position:fixed;inset:0 auto 0 0;width:270px;transform:translateX(-102%);transition:transform .25s var(--ease);box-shadow:0 10px 40px rgba(0,0,0,.25)}
+  .shell.rail-open .rail{transform:none}.rail-toggle{display:inline-block}}
+
+
+.logo{display:grid;place-items:center;color:#fff}.top{display:flex;align-items:center;position:sticky;top:0;z-index:5;border-bottom:1px solid var(--line)}
+/* Shared product surfaces: calm hierarchy, clear focus and generous spacing. */
+:root{--bg:#f8fafd;--panel:#fff;--sunk:#f1f4f9;--fg:#202124;--muted:#5f6368;--faint:#687484;--line:#e0e5ee;--accent:#1a73e8;--accent-soft:#e8f0fe;--rail:#f8fafd;--rail-on:#d3e3fd;--rail-hover:#edf2fa;--r-sm:10px;--r-md:16px;--r-lg:20px;--shadow:0 1px 2px rgba(60,64,67,.04);--ease:cubic-bezier(.2,0,0,1)}
+body{font-family:Arial,"Helvetica Neue",system-ui,sans-serif;line-height:1.55;letter-spacing:0}
+.shell{grid-template-columns:264px minmax(0,1fr)}
+.rail{padding:20px 14px;background:var(--rail);backdrop-filter:none;border-right:1px solid var(--line)}
+.rail-brand{padding:2px 12px 22px;gap:12px}.rail-brand b{font-size:21px;font-weight:500;letter-spacing:-.7px}.rail-brand small{font-size:11px}
+.rail-brand .logo{width:34px;height:34px;border-radius:11px;background:var(--accent);font-size:22px}
+.rail-search{min-height:42px;border-radius:24px;padding:9px 14px;margin:0 0 14px}
+.rail-label{padding:20px 16px 7px;font-size:10px;letter-spacing:1.2px;color:var(--muted)}
+.rail a{min-height:42px;border-radius:24px;padding:9px 16px;font-size:13px;gap:12px;margin-bottom:2px}.rail a.on{font-weight:700;color:#174ea6}.rail a.on svg{color:#174ea6}
+.rail .badge{font-size:10px;line-height:17px;padding:0 6px}.rail-foot{padding:20px 12px 4px;margin-top:24px}
+.top{height:64px;padding:0 28px;gap:16px;background:var(--panel);backdrop-filter:none}.crumbs{font-size:13px}.avatar{background:#e8f0fe;color:#174ea6;width:32px;height:32px;font-weight:600}
+.wrap{max-width:1240px;padding:32px 36px 64px}.wrap .wrap{max-width:none;padding:0;margin:0}
+.hero{margin:0 0 28px}.hero h1{font-size:32px;line-height:1.25;font-weight:500;letter-spacing:-1px}.hero p{font-size:14px;line-height:1.7}.hdr h1{font-size:26px;font-weight:500;letter-spacing:-.7px}.hdr .meta{line-height:1.7}
+.home-grid{gap:22px}.kpis{gap:16px;margin-bottom:24px}.kpi{border-radius:16px;padding:22px;box-shadow:none}.kpi .v{font-size:34px;font-weight:500;line-height:1.35;margin:8px 0 4px}.kpi .l{font-size:13px}.kpi .s{color:var(--muted)}
+.card,.mergebox,.attempt{border-radius:16px;box-shadow:none}.card-h{padding:18px 22px;font-weight:600;font-size:14px}.card-b{padding:22px}.grid{gap:22px}.att{padding:16px 22px}.att .tx b{font-weight:600}.flow a{padding:16px;border:1px solid var(--line);background:var(--panel);border-radius:12px}.flow a b{font-weight:500}.sysrow,.act-row{padding:12px 0}
+.btn{min-height:40px;border-radius:22px;padding:9px 18px;font-size:13px;font-weight:600;box-shadow:none;transition:background .16s var(--ease),box-shadow .16s var(--ease)}.btn:hover{box-shadow:0 1px 3px rgba(60,64,67,.12)}.btn.primary:hover{filter:none;background:#1765cc}.btn.sm{min-height:32px;padding:6px 12px;font-size:12px}.btn:disabled{box-shadow:none}
+.tabs{gap:10px;margin:24px 0}.tabs button,.tabs a{padding-top:12px;padding-bottom:12px}.tabs button.on{color:var(--accent)}
+.side{background:var(--panel)}.side-h{padding:20px 16px}.list{padding:10px}.item{padding:14px 12px;border-radius:12px;margin-bottom:4px}.item .t{line-height:1.5;margin:5px 0}.filters{border-radius:20px;padding:4px}.filters button{border-radius:18px;min-height:30px}
+.input,input[type="text"],input[type="email"],input[type="password"],input[type="url"],textarea,select{border-radius:10px;transition:border-color .15s,box-shadow .15s}.input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.empty{color:var(--muted);padding:48px 20px;line-height:1.8}.index-empty{margin:10vh auto}.index-empty h2{font-size:26px;font-weight:500}.index-empty p{line-height:1.8}.empty-state{padding:38px;background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:680px;margin:32px auto}.empty-state h2{font-size:22px;font-weight:500;margin:12px 0 8px}.empty-state p{color:var(--muted)}
+table th{font-size:11px;letter-spacing:.4px;color:var(--muted);background:var(--sunk)}table th,table td{padding:12px 14px!important}table tbody tr:hover{background:color-mix(in srgb,var(--accent-soft) 35%,transparent)}
+.snav a{border-radius:20px}.hint,.meta{color:var(--muted)}.toast{border-radius:12px;padding:14px 20px}.switch input:focus-visible + span,.hil-switch input:focus-visible + span{outline:3px solid var(--accent);outline-offset:3px}
+@media(prefers-color-scheme:dark){:root{--bg:#111827;--panel:#1b2433;--sunk:#242f40;--fg:#e8eaed;--muted:#b6c0cf;--faint:#9aa8bc;--line:#354153;--accent:#8ab4f8;--accent-soft:#243c60;--rail:#151e2b;--rail-on:#243c60;--rail-hover:#202d40;--accent-fg:#10213a}.rail a.on,.rail a.on svg{color:#a8c7fa}.btn.primary:hover{background:#a8c7fa}.avatar{background:#243c60;color:#a8c7fa}.rail-brand .logo{color:#10213a}}
+@media(max-width:1100px){.wrap{padding:26px 24px 56px}.g-side{grid-template-columns:1fr}}
+@media(max-width:980px){.shell{grid-template-columns:1fr}.rail{width:280px}.top{padding:0 20px}.shell.rail-open::after{content:"";position:fixed;inset:0;background:rgba(32,33,36,.35);z-index:19;pointer-events:none}.rail-foot{margin-top:20px}}
+@media(max-width:640px){.top{height:auto;min-height:60px;padding:12px;gap:8px;flex-wrap:wrap}.crumbs{flex:1;min-width:80px}.wrap{padding:22px 16px 48px}.hero h1{font-size:27px}.hdr h1{font-size:23px}.card-h,.card-b{padding:16px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.kpi{padding:16px}.kpi .v{font-size:29px}.kpi .l{font-size:12px}.empty-state{padding:24px;margin:16px 0}.grid,.home-grid{gap:16px}.btn{white-space:normal}.rail-toggle{min-width:32px;min-height:32px}.cx-head{flex-wrap:wrap}.plat{margin-left:0}.syncbtn{margin-left:auto}.flow a{padding:12px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.shell{min-height:100vh;height:auto}.rail{position:sticky;top:0;height:100vh}.content{height:auto}.monitor-main{max-width:1240px;width:100%;padding:32px 36px 64px;margin:0 auto}.monitor-main h1{font-size:30px;font-weight:500;letter-spacing:-.8px;margin:0 0 8px}.monitor-main>.sub{font-size:14px;margin-bottom:28px;max-width:700px}.monitor-main>.card{padding:24px;margin-bottom:22px}.monitor-main h3{font-size:17px;font-weight:500}.monitor-main dd{margin:0;min-width:0}.monitor-main dl{gap:10px 24px;padding:18px 0;margin-top:16px;border-top:1px solid var(--line);font-size:13px}.state{font-size:26px;font-weight:500;letter-spacing:0;margin-top:8px}button,.button-link{min-height:40px;padding:9px 18px;border-radius:22px;font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;border:1px solid var(--line);background:var(--panel);color:var(--fg)}button:hover,.button-link:hover{background:var(--sunk)}.btn-primary{background:var(--accent);border-color:var(--accent)}.btn-primary:hover{background:#1765cc}.switch input:focus-visible+.slider{outline:3px solid var(--accent);outline-offset:3px}.help{padding:16px;background:var(--sunk);border-radius:12px}.help summary{cursor:pointer;font-weight:600}#error:empty{display:none}#error:not(:empty){padding:12px;border-radius:10px;background:color-mix(in srgb,var(--err) 8%,transparent)}#specMsg{min-height:24px}.monitor-main textarea{background:var(--sunk);padding:16px;min-height:310px}.tag{padding:4px 10px;margin:3px;font-size:11px}.phone{padding:18px;border-radius:20px}.monitor-main .grid2{gap:24px}#hRecent:empty:after{content:"No recent incidents. New reports will appear here.";display:block;padding:20px 0;color:var(--muted);font-size:13px}.monitor-main table{min-width:550px}.monitor-main tbody td{line-height:1.7}
+@media(max-width:980px){.rail{position:fixed}.monitor-main{padding:26px 24px 56px}}
+@media(max-width:640px){.monitor-main{padding:22px 16px 48px}.monitor-main>.card{padding:18px}.monitor-main h1{font-size:26px}.monitor-main dl{grid-template-columns:1fr;gap:4px}.monitor-main dd{margin-bottom:10px}.monitor-main .row{gap:16px}.monitor-main .row>span{flex-wrap:wrap}.monitor-main #health>div[style*="grid"]{grid-template-columns:1fr!important}.monitor-main #health>div[style*="grid"]>div{display:flex;align-items:center;gap:12px}}
+
+.crumbs{flex:1;min-width:60px}.top>.plat,.top>.mode,.top>.ah,.top>.bell{flex:none}@media(max-width:1500px){.top .repo{display:none}}
+
+code{overflow-wrap:anywhere}pre code{overflow-wrap:normal}.tabs{min-width:0;max-width:100%}.diff,.file,.codeview{min-width:0;max-width:100%}
+.rail-close,.rail-backdrop{display:none}.btn-primary{color:var(--accent-fg,#fff)}
+@media(max-width:980px){.shell.rail-open::after{display:none}.rail-brand{position:relative;padding-right:42px}.rail-close{display:flex;position:absolute;right:0;top:0;align-items:center;justify-content:center;width:32px;min-height:32px;padding:0;background:transparent}.shell.rail-open .rail-backdrop{display:block;position:fixed;inset:0;z-index:19;background:rgba(32,33,36,.35);border:0;border-radius:0;padding:0}.rail-backdrop:hover{background:rgba(32,33,36,.35)}}
+@media(prefers-color-scheme:dark){.btn-primary:hover{background:#a8c7fa;color:#10213a}}
 </style>
 </head>
 <body>
-<main>
-  <h1>MobileHeal Control Dashboard</h1>
-  <p class="sub">Auto-Heal agent status and schema enforcement · <a href="/#home">← Back to MobileHeal home</a> <span class="muted">(change requests → design → PR → test → merge)</span></p>
+<div class="shell" id="shell"><button class="rail-backdrop" aria-label="Close navigation" tabindex="-1" onclick="setMonitorNavigation(false)"></button><nav class="rail" id="rail" aria-label="Primary">
+  <div class="rail-brand"><div class="logo" aria-hidden="true">✚</div><div><b>MobileHeal</b><small>Autonomous app delivery</small></div><button class="rail-close" aria-label="Close navigation" onclick="setMonitorNavigation(false)">×</button></div>
+  <button class="rail-search" onclick="location.href='/workflow#home'" aria-label="Search and commands"><span style="width:15px;display:inline-flex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>Open workspace</button>
+  <a href="/workflow#home" data-r="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Home</a>
+  <a href="/workflow-map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="9" width="5" height="6" rx="1"/><rect x="16" y="3" width="5" height="6" rx="1"/><rect x="16" y="15" width="5" height="6" rx="1"/><path d="M8 12h4V6h4M12 12v6h4"/></svg>Workflow studio<span class="badge" style="background:var(--accent)">Sample</span></a>
+  <div class="rail-label">Deliver</div>
+  <a href="/workflow#delivery" data-r="delivery"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6l1 2h3v15H5V6h3z"/><path d="M9 12h6M9 16h4"/></svg>Requirements<span class="badge amber" id="b-req"></span></a>
+  <a href="/workflow#studio" data-r="studio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.6 7.1 18.2l.9-5.5-4-3.9 5.5-.8z"/></svg>App Studio</a>
+  <a href="/workflow#tests" data-r="tests"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7 15h10"/></svg>Test library</a>
+  <div class="rail-label">Operate</div>
+  <a href="/workflow#incidents" data-r="incidents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17.5v.01"/></svg>Incidents<span class="badge" id="b-inc"></span></a>
+  <a href="/workflow#data" data-r="data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.5"/><path d="M4.5 5.5v13c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5v-13M4.5 12c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5"/></svg>Data health<span class="badge" id="b-data"></span></a>
+  <a href="/dashboard" class="on" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>Live monitor</a>
+  <a href="/workflow#crashes" data-r="crashes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2c1 3 4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 1-5 2 1 3 3 3 3"/><path d="M6 14a6 6 0 0 0 12 0"/></svg>Crashlytics<span class="badge" id="b-cx"></span></a>
+  <a href="/workflow#demo" data-r="demo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/></svg>Crash demo</a>
+  <div class="rail-label">Configure</div>
+  <a href="/workflow#settings" data-r="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</a>
+  <a href="/workflow#audit" data-r="audit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>Audit log</a>
+  <div class="rail-foot">MobileHeal workspace<br>Live monitor &amp; business rules</div>
+</nav><div class="content"><header class="top"><button class="rail-toggle" id="monitor-nav-toggle" aria-label="Toggle navigation" aria-controls="rail" aria-expanded="false" onclick="setMonitorNavigation(!document.getElementById('shell').classList.contains('rail-open'))">☰</button><nav class="crumbs" aria-label="Breadcrumb"><a href="/workflow#home">Workspace</a><span aria-hidden="true"> / </span><b>Live monitor</b></nav></header><main class="monitor-main">
+  <h1>Live monitor</h1>
+  <p class="sub">Monitor the watcher, review incident activity, and keep connected app profiles aligned with your business rules.</p>
 
   <section class="card">
     <div class="row">
       <div><div class="muted">Watcher agent</div>
-        <div class="state"><span class="dot" id="dot"></span><span id="state">…</span></div></div>
-      <label class="switch" title="Start / stop agent"><input type="checkbox" id="toggle"><span class="slider"></span></label>
+        <div class="state"><span class="dot" id="dot"></span><span id="state">Connecting…</span></div></div>
+      <label class="switch" title="Start / stop agent"><input type="checkbox" id="toggle" aria-label="Start or stop watcher agent"><span class="slider"></span></label>
     </div>
     <dl>
       <dt>Interval</dt><dd id="interval">–</dd>
@@ -65,9 +148,9 @@
   </section>
 
   <section class="card" id="health">
-    <div class="row"><h3 style="margin:0">Production health</h3>
+    <div class="row"><h3 style="margin:0">Incident health</h3>
       <label style="display:flex;gap:8px;align-items:center" class="muted">Auto-heal
-        <span class="switch"><input type="checkbox" id="ahToggle"><span class="slider"></span></span></label></div>
+        <span class="switch"><input type="checkbox" id="ahToggle" aria-label="Enable automatic healing"><span class="slider"></span></span></label></div>
     <p class="muted" style="margin:6px 0 12px">Unhandled errors in the backend and crashes in the Android app become incidents. Auto-heal reproduces each crash, fixes it, and opens a PR for your review.</p>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
       <div style="background:var(--bg);border-radius:10px;padding:10px 12px"><div style="font-size:22px;font-weight:700" id="hOpen">–</div><div class="muted" style="font-size:13px">open incidents</div></div>
@@ -77,7 +160,7 @@
     <div id="hRecent" style="margin-top:12px"></div>
     <div class="row" style="margin-top:12px">
       <span class="muted" style="font-size:13px">Try it: create a user without a name and open their greeting. It crashes in the real code path.</span>
-      <span style="display:flex;gap:8px"><a href="/workflow#demo"><button>Guided crash demo →</button></a><button id="chaos">Simulate production crash</button></span></div>
+      <span style="display:flex;gap:8px"><a class="button-link" href="/workflow#demo">Guided crash demo →</a><button id="chaos">Simulate demo crash</button></span></div>
   </section>
 
   <section class="card">
@@ -86,8 +169,8 @@
     <p class="muted" style="margin:6px 0 12px">Edits are validated, written to <code>requirements.txt</code>, and pushed to connected phones instantly.</p>
     <div class="grid2">
       <div>
-        <textarea id="spec" spellcheck="false"></textarea>
-        <p id="specMsg" class="muted" style="margin:6px 0 0">&nbsp;</p>
+        <textarea id="spec" aria-label="Business rules" spellcheck="false"></textarea>
+        <p id="specMsg" role="status" aria-live="polite" class="muted" style="margin:6px 0 0">&nbsp;</p>
       </div>
       <div>
         <div class="muted" style="font-size:13px;margin-bottom:6px">App preview</div>
@@ -108,11 +191,20 @@
   <section class="card scroll">
     <h3 style="margin-top:0">Profiles</h3>
     <table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Missing</th></tr></thead>
-      <tbody id="profiles"></tbody></table>
+      <tbody id="profiles"><tr><td colspan="5" class="muted">Loading profiles…</td></tr></tbody></table>
   </section>
-</main>
+</main></div></div>
 <script>
 const $ = id => document.getElementById(id);
+function setMonitorNavigation(open){
+  $("shell").classList.toggle("rail-open",open);
+  $("monitor-nav-toggle").setAttribute("aria-expanded",String(open));
+  if(open) document.querySelector(".rail-close").focus();
+  else $("monitor-nav-toggle").focus();
+}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("shell").classList.contains("rail-open")){e.preventDefault();setMonitorNavigation(false);}});
+document.querySelector('#rail a[href="/dashboard"]').addEventListener("click",e=>{e.preventDefault();setMonitorNavigation(false);});
+
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 async function refresh() {
   try {
@@ -137,7 +229,7 @@ async function refresh() {
       return `<tr><td>${x.id}</td><td>${esc(x.name)}</td><td>${esc(x.email)}</td><td>${esc(x.phone_number)}</td>
         <td>${miss.length ? miss.map(m=>`<span class="tag req">${esc(m)}</span>`).join(" ") : '<span class="muted">✓ healthy</span>'}</td></tr>`;
     }).join("") : `<tr><td colspan="5" class="muted">No profiles yet</td></tr>`;
-  } catch (e) { $("error").textContent = "Backend unreachable"; }
+  } catch (e) { $("error").textContent = "Unable to connect to the backend. Status will refresh automatically."; $("state").textContent = "Unavailable"; $("profiles").innerHTML = `<tr><td colspan="5" class="muted">Profiles are temporarily unavailable.</td></tr>`; }
 }
 $("toggle").addEventListener("change", async e => {
   await fetch("/api/agent/toggle", {method:"POST", headers:{"Content-Type":"application/json"},
@@ -201,7 +293,7 @@ async function refreshHealth(){
     $("hRecent").innerHTML = h.recent.map(i => `<div class="row" style="border-top:1px solid var(--line);padding:8px 0;font-size:14px">
       <span><b>${esc(i.key)}</b> ${esc(i.title)} ${i.occurrences>1?`<span class="muted">×${i.occurrences}</span>`:""}</span>
       <a href="/workflow#cr/${i.id}" style="color:inherit">${lbl[i.status]||i.status} →</a></div>`).join("");
-  } catch(e) {}
+  } catch(e) { $("hRecent").innerHTML = `<p class="muted">Incident activity is unavailable. Retrying automatically…</p>`; }
 }
 $("ahToggle").addEventListener("change", async e => { await fetch("/api/healer/autoheal",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({on:e.target.checked})}); refreshHealth(); });
 $("chaos").addEventListener("click", async () => {
@@ -209,11 +301,11 @@ $("chaos").addEventListener("click", async () => {
   const p = await fetch("/api/profiles",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:"no-name-"+Date.now()%10000+"@example.com"})}).then(r=>r.json());
   const r = await fetch(`/api/profiles/${p.id}/greeting`); const body = await r.json();
   b.textContent = r.status===500 ? `HTTP 500 → ${body.incident} opened` : `HTTP ${r.status} (no crash — already fixed?)`;
-  setTimeout(()=>{ b.disabled=false; b.textContent="Simulate production crash"; }, 4000);
+  setTimeout(()=>{ b.disabled=false; b.textContent="Simulate demo crash"; }, 4000);
   refreshHealth(); refresh();
 });
 refreshHealth(); setInterval(refreshHealth, 3000);
-loadSpec(); refresh(); setInterval(refresh, 3000);
+loadSpec().catch(()=>{ $("specMsg").className="err"; $("specMsg").textContent="Unable to load business rules. Use Revert to try again."; }); refresh(); setInterval(refresh, 3000);
 </script>
 </body>
 </html>

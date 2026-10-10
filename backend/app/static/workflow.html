@@ -484,18 +484,61 @@ table.lib td{vertical-align:top} table.lib td:first-child,table.lib td:nth-child
 .st-phone iframe{width:100%;height:100%;border:0}
 .st-tbl{width:100%;border-collapse:collapse;font-size:13px}.st-tbl td,.st-tbl th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 @media (max-width:1100px){.st-team{grid-template-columns:repeat(2,minmax(0,1fr))}.st-grid{grid-template-columns:1fr}}
+
+/* Shared product surfaces: calm hierarchy, clear focus and generous spacing. */
+:root{--bg:#f8fafd;--panel:#fff;--sunk:#f1f4f9;--fg:#202124;--muted:#5f6368;--faint:#687484;--line:#e0e5ee;--accent:#1a73e8;--accent-soft:#e8f0fe;--rail:#f8fafd;--rail-on:#d3e3fd;--rail-hover:#edf2fa;--r-sm:10px;--r-md:16px;--r-lg:20px;--shadow:0 1px 2px rgba(60,64,67,.04);--ease:cubic-bezier(.2,0,0,1)}
+body{font-family:Arial,"Helvetica Neue",system-ui,sans-serif;line-height:1.55;letter-spacing:0}
+.shell{grid-template-columns:264px minmax(0,1fr)}
+.rail{padding:20px 14px;background:var(--rail);backdrop-filter:none;border-right:1px solid var(--line)}
+.rail-brand{padding:2px 12px 22px;gap:12px}.rail-brand b{font-size:21px;font-weight:500;letter-spacing:-.7px}.rail-brand small{font-size:11px}
+.rail-brand .logo{width:34px;height:34px;border-radius:11px;background:var(--accent);font-size:22px}
+.rail-search{min-height:42px;border-radius:24px;padding:9px 14px;margin:0 0 14px}
+.rail-label{padding:20px 16px 7px;font-size:10px;letter-spacing:1.2px;color:var(--muted)}
+.rail a{min-height:42px;border-radius:24px;padding:9px 16px;font-size:13px;gap:12px;margin-bottom:2px}.rail a.on{font-weight:700;color:#174ea6}.rail a.on svg{color:#174ea6}
+.rail .badge{font-size:10px;line-height:17px;padding:0 6px}.rail-foot{padding:20px 12px 4px;margin-top:24px}
+.top{height:64px;padding:0 28px;gap:16px;background:var(--panel);backdrop-filter:none}.crumbs{font-size:13px}.avatar{background:#e8f0fe;color:#174ea6;width:32px;height:32px;font-weight:600}
+.wrap{max-width:1240px;padding:32px 36px 64px}.wrap .wrap{max-width:none;padding:0;margin:0}
+.hero{margin:0 0 28px}.hero h1{font-size:32px;line-height:1.25;font-weight:500;letter-spacing:-1px}.hero p{font-size:14px;line-height:1.7}.hdr h1{font-size:26px;font-weight:500;letter-spacing:-.7px}.hdr .meta{line-height:1.7}
+.home-grid{gap:22px}.kpis{gap:16px;margin-bottom:24px}.kpi{border-radius:16px;padding:22px;box-shadow:none}.kpi .v{font-size:34px;font-weight:500;line-height:1.35;margin:8px 0 4px}.kpi .l{font-size:13px}.kpi .s{color:var(--muted)}
+.card,.mergebox,.attempt{border-radius:16px;box-shadow:none}.card-h{padding:18px 22px;font-weight:600;font-size:14px}.card-b{padding:22px}.grid{gap:22px}.att{padding:16px 22px}.att .tx b{font-weight:600}.flow a{padding:16px;border:1px solid var(--line);background:var(--panel);border-radius:12px}.flow a b{font-weight:500}.sysrow,.act-row{padding:12px 0}
+.btn{min-height:40px;border-radius:22px;padding:9px 18px;font-size:13px;font-weight:600;box-shadow:none;transition:background .16s var(--ease),box-shadow .16s var(--ease)}.btn:hover{box-shadow:0 1px 3px rgba(60,64,67,.12)}.btn.primary:hover{filter:none;background:#1765cc}.btn.sm{min-height:32px;padding:6px 12px;font-size:12px}.btn:disabled{box-shadow:none}
+.tabs{gap:10px;margin:24px 0}.tabs button,.tabs a{padding-top:12px;padding-bottom:12px}.tabs button.on{color:var(--accent)}
+.side{background:var(--panel)}.side-h{padding:20px 16px}.list{padding:10px}.item{padding:14px 12px;border-radius:12px;margin-bottom:4px}.item .t{line-height:1.5;margin:5px 0}.filters{border-radius:20px;padding:4px}.filters button{border-radius:18px;min-height:30px}
+.input,input[type="text"],input[type="email"],input[type="password"],input[type="url"],textarea,select{border-radius:10px;transition:border-color .15s,box-shadow .15s}.input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.empty{color:var(--muted);padding:48px 20px;line-height:1.8}.index-empty{margin:10vh auto}.index-empty h2{font-size:26px;font-weight:500}.index-empty p{line-height:1.8}.empty-state{padding:38px;background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:680px;margin:32px auto}.empty-state h2{font-size:22px;font-weight:500;margin:12px 0 8px}.empty-state p{color:var(--muted)}
+table th{font-size:11px;letter-spacing:.4px;color:var(--muted);background:var(--sunk)}table th,table td{padding:12px 14px!important}table tbody tr:hover{background:color-mix(in srgb,var(--accent-soft) 35%,transparent)}
+.snav a{border-radius:20px}.hint,.meta{color:var(--muted)}.toast{border-radius:12px;padding:14px 20px}.switch input:focus-visible + span,.hil-switch input:focus-visible + span{outline:3px solid var(--accent);outline-offset:3px}
+@media(prefers-color-scheme:dark){:root{--bg:#111827;--panel:#1b2433;--sunk:#242f40;--fg:#e8eaed;--muted:#b6c0cf;--faint:#9aa8bc;--line:#354153;--accent:#8ab4f8;--accent-soft:#243c60;--rail:#151e2b;--rail-on:#243c60;--rail-hover:#202d40;--accent-fg:#10213a}.rail a.on,.rail a.on svg{color:#a8c7fa}.btn.primary:hover{background:#a8c7fa}.avatar{background:#243c60;color:#a8c7fa}.rail-brand .logo{color:#10213a}}
+@media(max-width:1100px){.wrap{padding:26px 24px 56px}.g-side{grid-template-columns:1fr}}
+@media(max-width:980px){.shell{grid-template-columns:1fr}.rail{width:280px}.top{padding:0 20px}.shell.rail-open::after{content:"";position:fixed;inset:0;background:rgba(32,33,36,.35);z-index:19;pointer-events:none}.rail-foot{margin-top:20px}}
+@media(max-width:640px){.top{height:auto;min-height:60px;padding:12px;gap:8px;flex-wrap:wrap}.crumbs{flex:1;min-width:80px}.wrap{padding:22px 16px 48px}.hero h1{font-size:27px}.hdr h1{font-size:23px}.card-h,.card-b{padding:16px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.kpi{padding:16px}.kpi .v{font-size:29px}.kpi .l{font-size:12px}.empty-state{padding:24px;margin:16px 0}.grid,.home-grid{gap:16px}.btn{white-space:normal}.rail-toggle{min-width:32px;min-height:32px}.cx-head{flex-wrap:wrap}.plat{margin-left:0}.syncbtn{margin-left:auto}.flow a{padding:12px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+
+.crumbs{flex:1;min-width:60px}.top>.plat,.top>.mode,.top>.ah,.top>.bell{flex:none}@media(max-width:1500px){.top .repo{display:none}}
+
+code{overflow-wrap:anywhere}pre code{overflow-wrap:normal}.tabs{min-width:0;max-width:100%}.diff,.file,.codeview{min-width:0;max-width:100%}
+
+@media(max-width:640px){.top{gap:6px}.top .plat button{padding:5px 8px;font-size:11px}.top .plat button span{display:none}.top .avatar{width:28px;height:28px}.top .syncbtn{padding:5px 9px;min-height:30px}.top .bell{width:28px;min-width:28px;padding:4px}.top .crumbs{min-width:40px}}
+
+.card-b:has(>table.lib){overflow-x:auto}.card:has(>.card-b>table.lib){overflow:hidden}
+
+.rail-close,.rail-backdrop{display:none}
+@media(max-width:980px){.shell.rail-open::after{display:none}.rail-brand{position:relative;padding-right:42px}.rail-close{display:flex;position:absolute;right:0;top:0;align-items:center;justify-content:center;width:32px;min-height:32px;padding:0;background:transparent;color:var(--fg);border:1px solid var(--line);border-radius:50%;font-size:20px;cursor:pointer}.shell.rail-open .rail-backdrop{display:block;position:fixed;inset:0;z-index:19;background:rgba(32,33,36,.35);border:0;border-radius:0;padding:0}}
 </style>
 </head>
 <body>
-<div class="shell" id="shell">
+<div class="shell" id="shell"><button class="rail-backdrop" aria-label="Close navigation" tabindex="-1" onclick="setWorkspaceNavigation(false)"></button>
 <nav class="rail" id="rail" aria-label="Primary">
-  <div class="rail-brand"><div class="logo" aria-hidden="true">✚</div><div><b>MobileHeal</b><small>Autonomous app delivery</small></div></div>
+  <div class="rail-brand"><div class="logo" aria-hidden="true">✚</div><div><b>MobileHeal</b><small>Autonomous app delivery</small></div><button class="rail-close" aria-label="Close navigation" onclick="setWorkspaceNavigation(false)">×</button></div>
   <button class="rail-search" onclick="openPalette()" aria-label="Search and commands"><span style="width:15px;display:inline-flex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>Search<kbd>⌘K</kbd></button>
   <a href="#home" data-r="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Home</a>
+  <a href="/workflow-map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="9" width="5" height="6" rx="1"/><rect x="16" y="3" width="5" height="6" rx="1"/><rect x="16" y="15" width="5" height="6" rx="1"/><path d="M8 12h4V6h4M12 12v6h4"/></svg>Workflow studio<span class="badge" style="background:var(--accent)">Sample</span></a>
   <div class="rail-label">Deliver</div>
   <a href="#delivery" data-r="delivery"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6l1 2h3v15H5V6h3z"/><path d="M9 12h6M9 16h4"/></svg>Requirements<span class="badge amber" id="b-req"></span></a>
   <a href="#studio" data-r="studio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.6 7.1 18.2l.9-5.5-4-3.9 5.5-.8z"/></svg>App Studio</a>
   <a href="#tests" data-r="tests"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7 15h10"/></svg>Test library</a>
+  <a href="/agents">Agent control center</a>
   <div class="rail-label">Operate</div>
   <a href="#incidents" data-r="incidents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17.5v.01"/></svg>Incidents<span class="badge" id="b-inc"></span></a>
   <a href="#data" data-r="data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.5"/><path d="M4.5 5.5v13c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5v-13M4.5 12c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5"/></svg>Data health<span class="badge" id="b-data"></span></a>
@@ -509,7 +552,7 @@ table.lib td{vertical-align:top} table.lib td:first-child,table.lib td:nth-child
 </nav>
 <div class="content">
 <header class="top">
-  <button class="rail-toggle" aria-label="Open navigation" onclick="$('#shell').classList.toggle('rail-open')">☰</button>
+  <button class="rail-toggle" id="workspace-nav-toggle" aria-label="Open navigation" aria-controls="rail" aria-expanded="false" onclick="setWorkspaceNavigation(!$('#shell').classList.contains('rail-open'))">☰</button>
   <nav class="crumbs" id="crumbs" aria-label="Breadcrumb"></nav>
   <div class="plat" role="tablist" aria-label="Platform" id="plat">
     <button role="tab" data-p="android" onclick="setPlatform('android')"><span aria-hidden="true">🤖</span>Android</button>
@@ -527,7 +570,7 @@ table.lib td{vertical-align:top} table.lib td:first-child,table.lib td:nth-child
     <div class="filters" role="tablist" aria-label="Filter"><button data-f="change" class="on">Changes</button><button data-f="incident">Incidents</button><button data-f="all">All</button></div>
     <div class="list" id="list"></div>
   </aside>
-  <main class="main" id="main"><div class="wrap" id="view"></div></main>
+  <main class="main" id="main"><div class="wrap" id="view"><div class="empty-state" role="status"><span class="spinner" aria-hidden="true"></span><h2>Opening your workspace</h2><p>Loading delivery activity and connected services…</p></div></div></main>
 </div>
 </div>
 </div>
@@ -535,6 +578,15 @@ table.lib td{vertical-align:top} table.lib td:first-child,table.lib td:nth-child
 
 <script>
 const $ = s => document.querySelector(s);
+function isLocalDemo(){return !!(state.settings && (state.settings.demo_isolated || state.settings.demo_mode === "on"));}
+function setWorkspaceNavigation(open,restoreFocus=true){
+  $("#shell").classList.toggle("rail-open",open);
+  $("#workspace-nav-toggle").setAttribute("aria-expanded",String(open));
+  if(open) $(".rail-close").focus();
+  else if(restoreFocus) $("#workspace-nav-toggle").focus();
+}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("#shell").classList.contains("rail-open")){e.preventDefault();setWorkspaceNavigation(false);}});
+
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const SMALL = new Set(["of","and","the","or","to","in","on","for","a","an"]);
 const label = k => k.split("_").filter(Boolean).map((w,i) => i && SMALL.has(w) ? w : w[0].toUpperCase() + w.slice(1)).join(" ");
@@ -676,10 +728,10 @@ async function cxRepro(id){ try { CX.data = await api(`/api/crashfeed/${id}/repr
 async function cxReset(){ if (!confirm("Re-introduce all demo bugs and restart the Crashlytics counters?")) return;
   try { CX.data = await api("/api/crashfeed/reset",{method:"POST"}); CX.prev = {}; cxPaint(); toast("Demo reset — crashes are streaming again"); } catch(e){ toast(e.message); } }
 
-async function route(){
+async function renderRoute(){
   const h = location.hash.slice(1) || "home";
   clearInterval(state.poll);
-  document.querySelector('.app').classList.remove('list-open'); $("#shell").classList.remove("rail-open");
+  document.querySelector('.app').classList.remove('list-open'); setWorkspaceNavigation(false,false);
   const page = ["home","tests","settings","audit","demo","data","crashes","studio"].find(p => h===p || h.startsWith(p+"/"));
   document.querySelector(".app").classList.toggle("full", !!page);
   $("#main").scrollTop = 0;
@@ -693,6 +745,12 @@ async function route(){
     const inc = isInc(state.cr); state.filter = inc ? "incident" : "change"; setNav(inc ? "incidents" : "delivery");
     setCrumbs([[inc?"Incidents":"Requirements", inc?"#incidents":"#delivery"],[state.cr.key + " · " + state.cr.title, location.hash]]); }
   renderList();
+}
+async function route(){
+  try { await renderRoute(); }
+  catch(e){
+    $("#view").innerHTML = `<div class="empty-state" role="alert"><h2>We couldn’t open this page</h2><p>${esc(e.message || "The service is unavailable. Please try again.")}</p><button class="btn primary" onclick="route()">Try again</button> <a class="btn" href="#home">Go home</a></div>`;
+  }
 }
 function renderIndex(kind){
   const inc = kind==="incidents", items = state.list.filter(c => (c.kind==="incident") === inc);
@@ -743,7 +801,7 @@ async function renderModeSwitch(){
   let el = document.getElementById("dmode");
   if (!el){ el = document.createElement("div"); el.id="dmode"; el.className="mode"; el.setAttribute("role","radiogroup"); el.setAttribute("aria-label","Delivery mode"); $("#ah").before(el); }
   el.innerHTML = `<button role="radio" aria-checked="${m==='manual'}" class="${m==='manual'?'on':''}" title="People approve the design, the fix, testing and the merge" onclick="setMode('manual')">Manual</button>`
-    + `<button role="radio" aria-checked="${m==='autopilot'}" class="${m==='autopilot'?'on ap':''}" title="Agents take every change from requirements to deployment; reviewers must approve" onclick="setMode('autopilot')">✈︎ Autopilot</button>`;
+    + `<button role="radio" aria-checked="${m==='autopilot'}" class="${m==='autopilot'?'on ap':''}" title="${isLocalDemo()?"Agents merge approved changes into the local demo project":"Agents take every change from requirements to deployment; reviewers must approve"}" onclick="setMode('autopilot')">✈︎ Autopilot</button>`;
 }
 async function setMode(mode){
   await act(async()=>{ state.mode = await api("/api/delivery-mode",{method:"POST",body:{mode}}); renderModeSwitch(); if (state.cr && location.hash.startsWith('#cr/')) { await loadCR(state.cr.id, state.tab); } },
@@ -756,7 +814,7 @@ async function watchIncidents(){
   const sig = incs.map(c=>c.id+":"+c.status+":"+c.occurrences).join("|");
   if (prev!==null && sig!==prev){
     const newest = incs[0];
-    if (newest && !prev.includes(newest.id+":")) toast(`🚨 ${newest.key} detected in production — auto-healing`);
+    if (newest && !prev.includes(newest.id+":")) toast(`🚨 ${newest.key} detected in ${isLocalDemo()?"the local demo":(newest.incident?.environment||"the configured environment")} — auto-healing`);
     if (state.cr && state.route==="cr" && !["coding","diagnosing"].includes(state.cr.status)) { const fresh = await api(`/api/cr/${state.cr.id}`); if (fresh.status!==state.cr.status || fresh.occurrences!==state.cr.occurrences){ state.cr=fresh; renderCR(); } }
   }
   state.seen = sig;
@@ -1056,6 +1114,7 @@ async function loadCR(id, tab){
 function setTab(t){ state.tab=t; history.replaceState(null,"",`#cr/${state.cr.id}/${t}`); renderCR(); }
 
 function renderCR(){
+  const demo = state.settings && (state.settings.demo_isolated || state.settings.demo_mode === "on");
   const cr = state.cr, st = stageOf(cr);
   const tabs = isInc(cr) ? [["overview","Incident"],["diagnosis","Diagnosis & fix"],["code","Code", cr.stats?cr.stats.files:null],
       ["checks","Checks", cr.checks?cr.checks.length:null],["test","Approve fix"],["review","Code review", rvCount(cr)],["pr","Pull request"],["council","Agent council"]]
@@ -1073,13 +1132,14 @@ function renderCR(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">${syncChip(cr)}${flowActions(cr)}${headerActions(cr)}</div></div>
     ${stepper(st, cr)}
     <div id="owners-row"></div>
-    ${cr.status==="pr_open"&&cr.deploy_ready?`<div class="hil"><div class="hil-l"><span class="hil-dot"></span><div><b>Ready to deploy to production</b><div class="hint" style="margin:0">Reviewed by 2 agents per platform, all checks and tests green — prepared by ${esc(cr.deploy_ready.by)} ${ago(cr.deploy_ready.at)}. Human-in-the-loop: flip the switch to ship.</div></div></div>
-      <label class="hil-switch" title="Deploy to production"><input type="checkbox" onchange="if(this.checked) hilDeploy(this)"><span></span><b>Deploy to production</b></label></div>`:""}
+    ${!isInc(cr)?`<div class="hil" style="margin-top:16px"><div><b>Evidence-gated release</b><div class="hint" style="margin:0">Inspect confidence, independent reviewer receipts, blockers and simulated human approval in the agent control center.</div></div><a class="btn" href="/agents?cid=${encodeURIComponent(cr.id)}">Prepare release evidence →</a></div>`:""}
+    ${cr.status==="pr_open"&&cr.deploy_ready?`<div class="hil"><div class="hil-l"><span class="hil-dot"></span><div><b>${demo?"Ready for local merge":"Ready to deploy to production"}</b><div class="hint" style="margin:0">Reviewed by 2 agents per platform, all checks and tests green — prepared by ${esc(cr.deploy_ready.by)} ${ago(cr.deploy_ready.at)}. Human-in-the-loop: flip the switch to ship.</div></div></div>
+      <label class="hil-switch" title="${demo?"Merge demo branch":"Deploy to production"}"><input type="checkbox" onchange="if(this.checked) hilDeploy(this)"><span></span><b>${demo?"Merge demo branch":"Deploy to production"}</b></label></div>`:""}
     ${cr.status==="stopped"?`<div class="banner-err" style="margin-top:16px;background:var(--amber-soft);color:var(--fg)"><span style="font-size:18px">⏸</span><div style="flex:1"><b>Workflow stopped</b> (it was ${esc((cr.stopped_from||"").replace(/_/g," "))}). Agents and Autopilot leave it alone until you restart it.</div><button class="btn sm primary" onclick="flowAct('restart')">↻ Restart</button></div>`:""}
     ${cr.status==="reverted"?`<div class="banner-err" style="margin-top:16px;background:var(--sunk);color:var(--fg)"><span style="font-size:18px">↶</span><div style="flex:1"><b>Reverted.</b> ${esc(cr.reverted_commit||"")}. Live rules and phones are back to the previous version.</div><button class="btn sm primary" onclick="flowAct('restart')">↻ Restart from requirements</button></div>`:""}
     ${cr.status==="merged"?mergedBanner(cr):""}
     ${cr.status==="pr_open"&&cr.autopilot_paused&&(state.mode||{}).mode==="autopilot"?`<div class="ap-banner"><span aria-hidden="true">✈︎</span><div style="flex:1"><b>Autopilot paused:</b> ${esc(cr.autopilot_paused)}. <a href="javascript:void 0" onclick="setTab('review')">Open code review →</a></div></div>`:""}
-    ${cr.status==="pr_open"&&!cr.autopilot_paused&&(state.mode||{}).mode==="autopilot"?`<div class="ap-banner"><span aria-hidden="true">✈︎</span><div>Autopilot is driving this PR — it merges and deploys as soon as 2 reviewers per platform approve.</div></div>`:""}
+    ${cr.status==="pr_open"&&!cr.autopilot_paused&&(state.mode||{}).mode==="autopilot"?`<div class="ap-banner"><span aria-hidden="true">✈︎</span><div>${demo?"Autopilot is driving this demo PR — it merges into the local demo project after 2 reviewers per platform approve.":"Autopilot is driving this PR — it merges and deploys as soon as 2 reviewers per platform approve."}</div></div>`:""}
     ${cr.status==="pr_open"&&cr.tested?`<div class="banner-err" style="margin-top:16px;background:var(--blue-soft);color:var(--fg)"><span style="font-size:18px">ⓘ</span><div><b>Tested, not merged yet.</b> Changes stay on branch <code>${esc(cr.pr.branch)}</code> until you merge — they are not in your Android Studio project yet. <a href="javascript:void 0" onclick="setTab('pr')">Review &amp; merge →</a></div></div>`:""}
     ${cr.status==="needs_engineer"?`<div class="banner-err" style="margin-top:16px"><b>Auto-heal couldn't produce a verified fix.</b> ${esc(cr.error||"See Diagnosis for what was tried.")}</div>`:""}
     ${cr.status==="failed"?`<div class="banner-err" style="margin-top:16px"><b>Coding failed:</b> ${esc(cr.error)}</div>`:""}
@@ -1454,7 +1514,7 @@ function tReview(cr){
         <div class="rv-meter" aria-label="${v.approvals} of ${v.required} approvals">${Array.from({length:v.required},(_,i)=>`<i class="${i<v.approvals?'on':v.blocking.length?'bad':''}"></i>`).join("")}</div>
         <div class="hint" style="margin:0">${v.approvals}/${v.required} approvals${v.blocking.length?` · changes requested by ${esc(v.blocking.join(", "))}`:""}</div></div></div>`).join("")}
       <div class="card"><div class="card-b" style="font-size:13px;display:grid;gap:6px">
-        <b>Merge policy</b><div class="hint" style="margin:0">${r.required} approvals per impacted platform, no open “changes requested”. ${(state.mode||{}).mode==="autopilot"?"<b>Autopilot</b> merges and deploys automatically once satisfied.":"<b>Manual</b>: a person merges once satisfied."}</div>
+        <b>Merge policy</b><div class="hint" style="margin:0">${r.required} approvals per impacted platform, no open “changes requested”. ${(state.mode||{}).mode==="autopilot"?(isLocalDemo()?"<b>Autopilot</b> merges into the local demo project once satisfied.":"<b>Autopilot</b> merges and deploys automatically once satisfied."):"<b>Manual</b>: a person merges once satisfied."}</div>
         ${remote?`<div class="hint" style="margin:0">Reviews are posted to ${remote}${r.synced_at?` · synced ${ago(r.synced_at)}`:""}${r.remote&&r.remote.error?` · <span class="err">${esc(r.remote.error)}</span>`:""}</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" onclick="rvSync()">⟳ Sync from ${remote}</button>${cr.pr.github_url?`<a class="btn sm" href="${esc(cr.pr.github_url)}" target="_blank" rel="noopener">Open on ${remote} ↗</a>`:""}</div>`
           :`<div class="hint" style="margin:0">Connect GitHub or GitLab in Settings → Source control to post reviews there and sync comments back.</div>`}
@@ -1620,8 +1680,8 @@ function tCouncil(cr){
       <p class="hint">Production gate: <b>${c.prod_gate==="hil"?"Human-in-the-loop switch":"Autopilot deploys"}</b> · change it in Settings → Delivery &amp; approvals.</p>
     </div></div>`;
 }
-async function hilDeploy(el){ if (!confirm(`Deploy ${state.cr.key} to production now?`)) { el.checked = false; return; }
-  await act(async()=>{ state.cr = await api(`/api/cr/${state.cr.id}/deploy`,{method:"POST"}); await refreshList(); renderCR(); }, "Deployed to production 🚀"); }
+async function hilDeploy(el){ const demo = state.settings && (state.settings.demo_isolated || state.settings.demo_mode === "on"); if (!confirm(demo ? `Merge ${state.cr.key} into the local demo project now?` : `Deploy ${state.cr.key} to production now?`)) { el.checked = false; return; }
+  await act(async()=>{ state.cr = await api(`/api/cr/${state.cr.id}/deploy`,{method:"POST"}); await refreshList(); renderCR(); }, demo ? "Merged into the local demo project" : "Deployed to production 🚀"); }
 async function toCR(){ await act(async()=>{ const n = await api(`/api/cr/${state.cr.id}/to-change-request`,{method:"POST"}); location.hash = "#cr/" + n.id; }, "Change request opened"); }
 function flowActions(cr){
   const st = cr.status, running = ["design_review","coding","pr_open","detected","diagnosing","awaiting_approval","fixing"].includes(st);
@@ -2545,7 +2605,7 @@ async function renderDemo(){
   const d = await api("/api/demo"); state.demo = state.demo || {}; state.demo.data = d;
   const D = state.demo, h = d.healer;
   $("#view").innerHTML = `
-   <div class="hdr"><div><h1>Production crash demo</h1><div class="meta">Trigger a real crash through the real code path and watch MobileHeal detect it, fix it and open a PR for review.</div></div>
+   <div class="hdr"><div><h1>Guided crash demo</h1><div class="meta">Trigger a real crash through the real code path and watch MobileHeal detect it, fix it and open a PR for review.</div></div>
      <div class="demo-ctl"><label class="ah"><span>Auto-play review & merge</span><span class="switch"><input type="checkbox" id="dm-auto" ${D.autoplay?"checked":""} onchange="state.demo.autoplay=this.checked"><span></span></span></label></div></div>
    ${h.autoheal?"":`<div class="banner-err" style="margin-top:14px">Auto-heal is off, so crashes will only be recorded. <button class="btn sm" onclick="toggleAutoheal(true).then(renderDemo)">Turn it on</button></div>`}
    <div class="scen">${d.scenarios.map(sc=>`<div class="card scard ${D.active&&D.active.id===sc.id?'on':''}"><div class="card-b">
@@ -2863,7 +2923,7 @@ document.addEventListener("keydown", e => {
   else if (e.key==="/" && !/input|textarea|select/i.test(document.activeElement.tagName) && !$("#pal")){ e.preventDefault(); openPalette(); }
 });
 
-window.__init();
+window.__init().catch(e=>{ $("#view").innerHTML = `<div class="empty-state" role="alert"><h2>Your workspace is unavailable</h2><p>${esc(e.message || "Please check the backend connection and try again.")}</p><button class="btn primary" onclick="location.reload()">Reload workspace</button></div>`; });
 </script>
 
 </body>
