@@ -9,6 +9,18 @@ You will take a plain-English requirement through design, code generation, pull 
 
 The story is a customer profile screen. A product owner wants a softer notification banner and an optional date of birth. You will see how that sentence becomes explicit rules, how those rules become a diff, and how tests keep the change accountable.
 
+### The architecture: one workspace, a focused crew
+
+![Illustrated MobileHeal architecture with the web portal, backend agents, mobile clients, isolated Git workspace, local database and simulated integrations](assets/mobileheal-architecture.png)
+
+*Architecture overview. The portal sends requests to the FastAPI backend. Delivery workflow, Crash healer and DataWatchdog share the local application context. Git holds generated changes; SQLite holds profiles and workflow state. Mobile clients use the API and live WebSocket updates. External services are simulated in this demo.*
+
+### The workflow: proposal, approval, evidence
+
+![Illustrated six-stage delivery workflow and recovery feedback loop for MobileHeal](assets/mobileheal-workflow.png)
+
+*Delivery follows Requirements → UX design → Code → Pull request → Tests → Local merge. Human decisions guard the Manual-mode gates. A crash or data issue enters a recovery path: detect and diagnose, propose a fix or corrective action, review and verify, then replay the failing request or rescan the data. Data issues can also require a customer to update a record.*
+
 ### What you will learn
 
 - Translate a business request into inspectable field and UI rules.

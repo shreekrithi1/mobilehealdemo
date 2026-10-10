@@ -32,7 +32,7 @@ Port 8000 occupied? Run `MOBILEHEAL_PORT=8010 python scripts/demo.py`, then open
 - [Complete codelab](codelab/guide.md): setup, delivery, tests and merge, crash recovery, data health, native clients, integrations, troubleshooting and reset.
 - [Application reference](docs/APPLICATION.md): the supplied project's detailed technical documentation.
 - [Verification record](docs/VERIFICATION.md): actual checks and known limitations.
-- `codelab/`: static HTML/CSS/JavaScript, generated lesson data, and seven real screenshots. No external runtime assets.
+- `codelab/`: static HTML/CSS/JavaScript, generated lesson data, seven real screenshots, and two original illustrated architecture and workflow diagrams. No external runtime assets.
 - `backend/`, `android/`, `ios/`, `figma-plugin/`: the supplied application source and tests.
 
 The guide has deep-linked lessons, lesson search, local reading progress, code-copy controls and screenshot enlargement. Rebuild lesson data after editing `codelab/guide.md`:

@@ -5,7 +5,7 @@ const requestedPort = new URLSearchParams(location.search).get('appPort');
 const appPort = requestedPort && /^\d+$/.test(requestedPort) && Number(requestedPort)>0 && Number(requestedPort)<65536 ? requestedPort : '8000';
 const storageKey = 'mobileheal-codelab-progress-v1';
 try { const stored = JSON.parse(localStorage.getItem(storageKey) || '[]'); if (Array.isArray(stored)) completed = new Set(stored.filter(Number.isInteger)); } catch (_) {}
-const hero = `<div class="hero-kicker">BUILD IT · REVIEW IT · VERIFY IT</div><div class="hero-graphic" aria-label="Six delivery stages: requirement, design, code, review, test, merge"><div class="small">THE MOBILEHEAL DELIVERY LOOP</div><h3>Intent becomes a change you can inspect.</h3><div class="flow">${['Requirement','UX design','Code','PR review','Test','Merge'].map((v,i)=>`<div><b>0${i+1}</b><span>${v}</span></div>`).join('')}</div></div>`;
+const hero = '<div class="hero-kicker">BUILD IT · REVIEW IT · VERIFY IT</div>';
 function persist() { try { localStorage.setItem(storageKey, JSON.stringify([...completed])); } catch (_) {} }
 function updateProgress() { const count = [...completed].filter(i=>i>=0&&i<lessons.length).length; $('progress').max=lessons.length; $('progress').value=count; $('progress-text').textContent=`${count} / ${lessons.length}`; }
 function nav() {

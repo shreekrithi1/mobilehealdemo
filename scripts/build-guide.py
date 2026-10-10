@@ -40,7 +40,8 @@ def render(markdown):
             i += 1; continue
         image = re.fullmatch(r'!\[([^\]]+)\]\(([^)]+)\)', line)
         if image:
-            out.append('<figure><button class="image-open" type="button" aria-label="Enlarge screenshot"><img loading="lazy" src="' + html.escape(image[2]) + '" alt="' + html.escape(image[1]) + '"></button></figure>')
+            label = 'Enlarge diagram' if 'mobileheal-' in image[2] else 'Enlarge screenshot'
+            out.append('<figure><button class="image-open" type="button" aria-label="' + label + '"><img loading="lazy" src="' + html.escape(image[2]) + '" alt="' + html.escape(image[1]) + '"></button></figure>')
             i += 1; continue
         heading = re.match(r'^(#{2,4}) (.+)', line)
         if heading:
