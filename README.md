@@ -23,7 +23,7 @@ bash run-application.sh
 - [Agent harness](docs/AGENT-HARNESS.md): durable execution and review contracts.
 - [Guardrails](docs/GUARDRAILS.md): evidence scores, mandatory gates and execution limits.
 - [Production design](docs/PRODUCTION.md) and [threat model](docs/THREAT-MODEL.md): deployment requirements and remaining boundaries.
-- [Five-slide pitch](pitch/output/MobileHeal-final.pptx): editable product and architecture presentation.
+- [Five-slide web pitch](codelab/pitch.html): browser presentation covering the product and architecture.
 
 ## What's inside
 

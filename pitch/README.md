@@ -1,4 +1,6 @@
-# MobileHeal pitch deck
+# MobileHeal pitch
+
+The primary browser presentation is `../codelab/pitch.html`, linked from the tutorial introduction. It contains five HTML slides with readable text, diagrams, keyboard arrows, direct slide links and a mobile layout. No PowerPoint download is required.
 
 The five-slide editable presentation is `output/MobileHeal-final.pptx`. Preview PNGs are in `previews/`. Text, process nodes and connectors remain native slide objects. Speaker notes distinguish verified local evidence from proposed production design.
 

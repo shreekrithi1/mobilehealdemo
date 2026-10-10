@@ -15,6 +15,10 @@ The story is a customer profile screen. A product owner wants a softer notificat
 
 *Architecture overview. The portal sends requests to the FastAPI backend. Delivery workflow, Crash healer and DataWatchdog share the local application context. Git holds generated changes; SQLite holds profiles and workflow state. Mobile clients use the API and live WebSocket updates. External services are simulated in this demo.*
 
+### The five-slide product pitch
+
+[View the MobileHeal web pitch](pitch.html#1) — explore the product, audience views, workflow, evidence gates and production design. Read it directly in your browser; no presentation download is needed.
+
 ### The workflow: proposal, approval, evidence
 
 ![Illustrated six-stage delivery workflow and recovery feedback loop for MobileHeal](assets/mobileheal-workflow.png)

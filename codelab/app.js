@@ -31,7 +31,7 @@ function route(focus=false) {
   current=index>=0&&index<lessons.length?index:0;
   const lesson=lessons[current];
   $('lesson').innerHTML=(current===0?hero:'')+lesson.html;
-  $('lesson').querySelectorAll('a').forEach(link=>{ const url=new URL(link.href,location.href); if(url.hostname==='localhost' && url.port==='8000'){url.port=appPort;link.href=url.href;} });
+  $('lesson').querySelectorAll('a').forEach(link=>{ const url=new URL(link.href,location.href); if(url.hostname==='localhost' && url.port==='8000'){url.port=appPort;link.href=url.href;} if(url.origin===location.origin && url.pathname.endsWith('/pitch.html')){url.searchParams.set('appPort',appPort);link.href=url.href;} });
   $('breadcrumb').textContent=`${lesson.group} / LESSON ${String(current+1).padStart(2,'0')}`;
   $('duration').textContent=`${lesson.minutes} min`;
   document.title=`${lesson.title} · MobileHeal Codelab`;

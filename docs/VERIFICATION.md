@@ -39,3 +39,7 @@ The earlier full inherited suite was interrupted after approximately ten minutes
 - Native builds/device runs require an isolated runtime and SDK/device evidence; Android Firebase configuration was excluded.
 - Rollback fails closed until its policy, evidence and mutation reconciliation are configured. SQLite is local durable state, not a multi-node production adapter. Startup reconciliation requires stopped workers.
 - Production requires authenticated roles/separation, isolated workers, durable queue/database/artifact storage, live integration validation, capacity tests and backup/rollback drills. See PRODUCTION.md and THREAT-MODEL.md.
+
+## Web pitch update
+
+Added five responsive HTML slides and a link from the tutorial introduction. Browser checks verified all five slides at 390px with document width 390px, desktop diagrams, previous/next and direct-slide navigation, and preservation of the selected application port in tutorial/app links. JavaScript syntax, guide generation and Git whitespace checks passed. The pitch uses local assets and requires no PowerPoint download.
