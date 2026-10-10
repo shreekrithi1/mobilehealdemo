@@ -47,56 +47,19 @@ A local MobileHeal workspace with a reviewed profile-screen change. The web work
 
 Use a terminal and a modern browser on macOS, Linux, or Windows with WSL. You do not need an LLM subscription, cloud project, or API key for the core lab. Keep this guide and MobileHeal in separate tabs.
 
-<!-- step: Install the demo | 5 | SETUP -->
-## Install and launch with one command
-
-You need **Python 3.10+ (3.12 recommended)** and **Git** on macOS, Linux, or Windows with WSL. Native SDKs are optional. No API key or cloud account is needed.
-
-Clone the repository once:
+<!-- step: Run the tutorial | 1 | SETUP -->
+## 1) Tutorial
 
 ```bash
-git clone https://github.com/shreekrithi1/mobilehealdemo.git
-cd mobilehealdemo
+bash run-tutorial.sh
 ```
 
-From the repository folder, run:
+<!-- step: Run the application | 1 | SETUP -->
+## 2) Application
 
 ```bash
-bash start.sh
+bash run-application.sh
 ```
-
-The script creates `backend/.venv`, installs the locked Python libraries, starts the backend and web portal, starts this guide, checks both servers, and opens both pages. The web portal is served by the backend, so it needs no separate frontend installation.
-
-Keep this terminal open. **Ctrl+C stops both servers.** Run the same command next time; it reuses the environment and demo workspace.
-
-> CHECKPOINT: The script prints the application and codelab URLs after both servers respond. The portal shows Demo mode and Parser mode.
-
-<!-- step: Start and verify | 2 | SETUP -->
-## Your running demo
-
-The previous command has already started everything. Open [the web app](http://localhost:8000/#new) and keep this guide in another tab.
-
-The launcher creates `.mobileheal/demo-workspace` and initializes Git in that copy. Generated changes and merges happen there. The separate database is `backend/mobileheal-demo.db`.
-
-### If a port is already occupied
-
-Choose free ports and run the same script:
-
-```bash
-MOBILEHEAL_PORT=8010 CODELAB_PORT=8081 bash start.sh
-```
-
-The printed guide URL includes the application port, so its app links point to the correct instance. The existing application is left running.
-
-### Optional launcher settings
-
-```bash
-PYTHON=python3.12 OPEN_BROWSER=0 bash start.sh
-```
-
-`PYTHON` selects the interpreter; `OPEN_BROWSER=0` leaves browser navigation to you. Install Python and Git first if the script reports either missing. The script installs application libraries inside the virtual environment.
-
-> CHECKPOINT: The requirement form loads and the backend is ready. If startup fails, read the final error in the terminal and consult Troubleshoot.
 
 <!-- step: Orient yourself | 2 | DELIVERY -->
 ## One portal, two kinds of work
@@ -386,7 +349,7 @@ You have followed a requirement into explicit rules, a proposed screen, generate
 
 ### Stop the servers
 
-Press **Ctrl+C** in the launcher terminal to stop both servers. Run `bash start.sh` to continue with the saved demo state.
+Press **Ctrl+C** in each launcher terminal to stop its server. Run `bash run-application.sh` to continue with the saved demo state.
 
 ### Reset the isolated demo
 
@@ -396,7 +359,7 @@ This removes the demo workspace, local branches and demo database. Stop the serv
 bash start.command --demo-reset
 ```
 
-Run `bash start.sh` again to create a fresh copy. The original Downloads application and its database are separate from this repository's isolated demo.
+Run `bash run-application.sh` again to create a fresh copy. The original Downloads application and its database are separate from this repository's isolated demo.
 
 ### Take the next step
 

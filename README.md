@@ -2,29 +2,17 @@
 
 A runnable MobileHeal application and an illustrated, 14-lesson codelab. Take a requirement through design, generated code, review, interactive tests and a local merge; then explore crash recovery and data health.
 
-## Quick start
-
-Requires **Python 3.10+ (3.12 recommended)** and **Git**. Use macOS, Linux, or Windows with WSL. No model key or cloud account is needed for the core demo.
+## 1) Tutorial
 
 ```bash
-git clone https://github.com/shreekrithi1/mobilehealdemo.git
-cd mobilehealdemo
-bash start.sh
+bash run-tutorial.sh
 ```
 
-One command creates the virtual environment, installs required libraries, starts the backend (which also serves the web app), starts the codelab, verifies both servers, and opens both browser pages. Keep the terminal running; Ctrl+C stops both servers.
-
-App: **http://localhost:8000/#new** · Guide: **http://localhost:8080/?appPort=8000#0**.
-
-The launcher uses an isolated `.mobileheal/demo-workspace` and a separate demo database. No API keys are needed.
-
-If ports are occupied:
+## 2) Application
 
 ```bash
-MOBILEHEAL_PORT=8010 CODELAB_PORT=8081 bash start.sh
+bash run-application.sh
 ```
-
-Use `PYTHON=python3.12` to choose an interpreter, or `OPEN_BROWSER=0` to skip opening browser tabs. Python and Git must already be installed.
 
 ## What's inside
 
