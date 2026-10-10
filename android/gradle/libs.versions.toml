@@ -1,0 +1,26 @@
+[versions]
+agp = "8.5.2"
+kotlin = "2.1.10"
+ksp = "2.1.10-1.0.30"
+hilt = "2.55"
+google-services = "4.4.2"
+firebase-bom = "33.9.0"
+firebase-crashlytics-plugin = "3.0.3"
+
+[libraries]
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
+firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
+firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
+firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
+firebase-config = { module = "com.google.firebase:firebase-config" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+google-services = { id = "com.google.gms.google-services", version.ref = "google-services" }
+firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebase-crashlytics-plugin" }

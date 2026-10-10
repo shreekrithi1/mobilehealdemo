@@ -1,0 +1,1259 @@
+"""Change-request workflow:  Requirements → UX Design → Coding → Pull Request → Test → Merge.
+
+Each change request (CR) is persisted in SQLite. Approving the design triggers coding:
+code generation, automated checks, and a git branch + commit that forms the PR.
+Merging applies the change to the live system (and pushes it to connected phones).
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import List, Optional
+
+from . import codegen
+from .ai import AI, Settings
+from .gitops import GitError, GitRepo
+from . import testcases as tc
+from . import figma as fg
+from .android_agent import AndroidAgent
+from .rules import RuleParseError, parse_spec
+
+log = logging.getLogger("mobileheal.workflow")
+
+STAGES = ["Requirements", "UX Design", "Coding", "Pull Request", "Test", "Merge"]
+
+
+def now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def slug(s: str) -> str:
+    words = re.sub(r"[^a-z0-9]+", " ", s.lower()).split()
+    out = ""
+    for w in words:
+        if len(out) + len(w) + 1 > 40:
+            break
+        out = f"{out}-{w}" if out else w
+    return out or (words[0][:40] if words else "change")
+
+
+class WorkflowStopped(BaseException):
+    """Raised inside a background step whose run was stopped/restarted by a person — ends that thread quietly.
+    BaseException so the steps' own `except Exception` handlers don't turn it into a 'failed' status."""
+
+
+class WorkflowError(Exception):
+    def __init__(self, msg: str, code: int = 400):
+        super().__init__(msg)
+        self.code = code
+
+
+class Workflow:
+    def __init__(self, db, agent, project_root: Path):
+        self.db = db
+        self.agent = agent
+        self.root = Path(project_root)
+        self.git = GitRepo(self.root)
+        self.settings = Settings(db)
+        self.ai = AI(self.settings)
+        self.tests = tc.TestStore(db)
+        self.backend = self.root / "backend"
+        with db._lock:
+            db._conn.execute("""CREATE TABLE IF NOT EXISTS change_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT NOT NULL)""")
+        self._tasks: set = set()
+        self.healer = None  # set by main
+        self.watchdog = None  # set by main
+        self.loop = None  # main event loop (set by main) — autopilot merges run on it
+        from .review import ReviewBoard
+        self.reviews = ReviewBoard(self)
+        self._autopilot_lock = threading.Lock()
+
+    # ------------------------------------------------------------ storage
+    def _save(self, cr: dict) -> dict:
+        cr["updated_at"] = now()
+        with self.db._lock:
+            if cr.get("id") and cr.get("kind") == "incident":
+                # background heal threads hold a snapshot — never lose occurrence counts from new crashes
+                row = self.db._conn.execute("SELECT data FROM change_requests WHERE id=?", (cr["id"],)).fetchone()
+                if row:
+                    cur = json.loads(row["data"])
+                    if cur.get("occurrences", 0) > cr.get("occurrences", 0):
+                        cr["occurrences"] = cur["occurrences"]
+                        cr["last_seen"] = cur.get("last_seen", cr.get("last_seen"))
+                        cr["samples"] = cur.get("samples", cr.get("samples"))
+            if cr.get("id") and not cr.pop("_own_run", False):
+                row = self.db._conn.execute("SELECT data FROM change_requests WHERE id=?", (cr["id"],)).fetchone()
+                if row:
+                    stored = json.loads(row["data"])
+                    if stored.get("run", 0) > cr.get("run", 0):
+                        raise WorkflowStopped(cr["id"])     # a newer run (stop / restart) owns this item now
+                    if stored.get("status") in ("stopped", "closed", "reverted") and cr.get("status") != stored["status"]:
+                        raise WorkflowStopped(cr["id"])     # only a person's restart may move it out of these states
+            if cr.get("id"):
+                self.db._conn.execute("UPDATE change_requests SET data=? WHERE id=?", (json.dumps(cr), cr["id"]))
+            else:
+                cur = self.db._conn.execute("INSERT INTO change_requests(data) VALUES ('{}')")
+                cr["id"] = cur.lastrowid
+                cr["key"] = f"{'INC' if cr.get('kind') == 'incident' else 'CR'}-{cr['id']}"
+                self.db._conn.execute("UPDATE change_requests SET data=? WHERE id=?", (json.dumps(cr), cr["id"]))
+        if cr.get("kind") == "incident":
+            self._jira_sync(cr)
+        return cr
+
+    # ------------------------------------------------------------ Jira defect sync
+    def _jira_sync(self, cr: dict, force: bool = False):
+        """Mirror the incident's workflow stage onto its Jira defect (create → comment/transition per stage)."""
+        from .jira import Jira
+        sig = f"{cr.get('status')}:{bool(cr.get('tested'))}"
+        j = cr.setdefault("jira", {})
+        if j.get("synced") == sig and not force:
+            return
+        jira = Jira(self.settings)
+        try:
+            if not j.get("key"):
+                d = cr.get("incident") or {}
+                env = d.get("environment", "production")
+                desc = (f"Detected automatically by MobileHeal ({cr['key']}) in {env}.\n\n"
+                        f"Error: {d.get('exc_type')}: {d.get('message')}\n"
+                        f"Location: {d.get('file') or 'unknown'}:{d.get('line') or ''} in {d.get('function') or '?'}()\n"
+                        f"Source: {'Android app' if d.get('source') == 'android' else 'Backend'}\n"
+                        + (f"Device: {(d.get('request') or {}).get('device')} · app {(d.get('request') or {}).get('app_version')}\n"
+                           if (d.get('request') or {}).get('device') else "")
+                        + (f"Regression of {d['regression_of']}\n" if d.get("regression_of") else "")
+                        + f"\nStack trace:\n```\n{(d.get('traceback') or '')[-4000:]}\n```\n\n"
+                        "Workflow: Defect → Analyze → Approve → Auto-fix → PR → Test → Merge (tracked by MobileHeal).")
+                labels = ["mobileheal", "crash", env, d.get("source") or "backend"] + (["regression"] if d.get("regression_of") else [])
+                j.update(jira.create(cr["title"], desc, labels, priority="Highest" if env.startswith("prod") else "High"))
+                self._event(cr, "MobileHeal", "jira", f"created {'Jira' if j['mode'] == 'live' else 'mock Jira'} defect {j['key']}")
+            text, state = self._jira_message(cr)
+            if text:
+                jira.comment(j["key"], text)
+            if state:
+                j["status"] = jira.transition(j["key"], state) or j.get("status")
+            j.pop("error", None)
+        except Exception as e:
+            log.warning("jira sync failed: %s", e)
+            j["error"] = str(e)[:300]
+        j["synced"] = sig
+        with self.db._lock:
+            self.db._conn.execute("UPDATE change_requests SET data=? WHERE id=?", (json.dumps(cr), cr["id"]))
+
+    def _jira_message(self, cr: dict):
+        st, a = cr.get("status"), cr.get("analysis") or {}
+        if st == "diagnosing":
+            return "🔎 MobileHeal started analyzing this crash.", "analyzing"
+        if st == "awaiting_approval":
+            dg = cr.get("diagnosis") or {}
+            pv = a.get("preview") or {}
+            return ("🧠 Analysis complete — approval needed before the automatic fix runs.\n\n"
+                    f"Root cause: {dg.get('summary', '')}\nProposed approach: {a.get('approach', '')}\n"
+                    f"Risk: {a.get('risk', '?')} · Verification: {a.get('verification', '')}\n"
+                    + (f"\nProposed change:\n```\n- {pv.get('before')}\n+ {pv.get('after')}\n```" if pv else "")
+                    + f"\nApprove or decline in MobileHeal ({cr['key']})."), "awaiting_approval"
+        if st == "fixing":
+            ap = cr.get("approval") or {}
+            return (f"✅ Automatic fix approved by {ap.get('by', 'policy')}" + (f": {ap['note']}" if ap.get("note") else "")
+                    + ". Auto-fix running."), "fixing"
+        if st == "pr_open" and not cr.get("tested"):
+            pr, s = cr.get("pr") or {}, cr.get("checks_summary") or {}
+            return (f"🔀 Fix PR #{pr.get('number')} opened on branch {pr.get('branch')} "
+                    f"(+{(cr.get('stats') or {}).get('additions', 0)} −{(cr.get('stats') or {}).get('deletions', 0)}). "
+                    f"Checks: {s.get('pass', 0)} passed, {s.get('warn', 0)} warnings, {s.get('fail', 0)} failed."
+                    + (f"\n{pr['github_url']}" if pr.get("github_url") else "") + "\nReady for testing."), "in_review"
+        if st == "pr_open" and cr.get("tested"):
+            return f"🧪 Fix tested and approved" + (f": {cr.get('test_notes')}" if cr.get("test_notes") else "."), None
+        if st == "needs_engineer":
+            return f"⚠️ Auto-heal needs an engineer: {cr.get('error') or (cr.get('diagnosis') or {}).get('summary', '')}", "needs_engineer"
+        if st == "merged":
+            return (f"🚀 Fix merged" + (f" as {cr['merged_commit']}" if cr.get("merged_commit") else "")
+                    + (f" and deployed ({cr['deployed']})" if cr.get("deployed") else "") + ". Resolving."), "done"
+        if st == "closed":
+            return "Closed in MobileHeal without merging a fix.", "wont_fix"
+        return None, None
+
+    def get(self, cid: int) -> dict:
+        with self.db._lock:
+            row = self.db._conn.execute("SELECT data FROM change_requests WHERE id=?", (cid,)).fetchone()
+        if not row:
+            raise WorkflowError("change request not found", 404)
+        return json.loads(row["data"])
+
+    def list(self) -> List[dict]:
+        with self.db._lock:
+            rows = self.db._conn.execute("SELECT data FROM change_requests ORDER BY id DESC").fetchall()
+        out = []
+        for r in rows:
+            cr = json.loads(r["data"])
+            out.append({k: cr.get(k) for k in ("id", "key", "title", "status", "author", "created_at",
+                                                "updated_at", "tested", "stage", "occurrences", "last_seen")} |
+                       {"kind": cr.get("kind", "change")} |
+                       {"pr": cr.get("pr"), "stats": cr.get("stats"), "checks_summary": cr.get("checks_summary"),
+                        "review_status": (cr.get("review") or {}).get("status"), "autopilot_paused": cr.get("autopilot_paused"),
+                        "source": cr.get("source")})
+        return out
+
+    @property
+    def user(self) -> str:
+        return self.settings.get("user_name") or "You"
+
+    def _event(self, cr: dict, actor: str, kind: str, text: str):
+        cr.setdefault("timeline", []).append({"ts": now(), "actor": actor, "kind": kind, "text": text})
+        try:
+            self.settings.audit(actor, f"{cr.get('kind', 'change')}.{kind}", cr.get("key", ""), text)
+        except Exception:
+            log.exception("audit failed")
+
+    # ------------------------------------------------------------ helpers
+    def _read(self, rel: str) -> Optional[str]:
+        p = self.root / rel
+        return p.read_text(encoding="utf-8") if p.exists() else None
+
+    def _base_files(self) -> dict:
+        paths = [codegen.SPEC_PATH, codegen.KOTLIN_PATH, codegen.TEST_PATH, codegen.SWIFT_PATH]
+        return {p: self._read(p) for p in paths}
+
+    def _design(self, base_text: str, new_text: str) -> dict:
+        try:
+            base = parse_spec(base_text)
+        except RuleParseError:
+            base = parse_spec("")
+        new = parse_spec(new_text)
+        profiles = self.db.list_profiles()
+        d = codegen.design_brief(base, new, profiles)
+        if self.watchdog is not None:
+            try:
+                imp = self.watchdog.preview(new_text, profiles)
+                d["data_impact"] = imp
+                if imp["missing_by_field"]:
+                    d["notes"].append("DataWatchdog: once live, " + ", ".join(
+                        f"{n} existing profile{'s' if n > 1 else ''} will be missing {f.replace('_', ' ')}"
+                        for f, n in imp["missing_by_field"].items())
+                        + " — those users get an in-app notification to complete it, and the team is alerted.")
+            except Exception:
+                pass
+        return d
+
+    # ------------------------------------------------------------ 1. requirements → 2. design
+    def create(self, title: str, description: str, spec_text: str, author: Optional[str] = None,
+               requirement_text: str = "", translation: Optional[dict] = None, source: Optional[str] = None) -> dict:
+        author = author or self.user
+        title = title.strip()
+        if not title:
+            raise WorkflowError("Title is required")
+        try:
+            parse_spec(spec_text)
+        except RuleParseError as e:
+            raise WorkflowError(f"Requirements are invalid: {e}")
+        base = self._read(codegen.SPEC_PATH) or ""
+        if base.strip() == spec_text.strip():
+            raise WorkflowError("The agent didn't find anything to change in this requirement. Try wording it like "
+                                "“City is required” or “Make the save button green”, answer the agent's questions, "
+                                "or add a model API key in Settings so an LLM reads it.")
+        cr = {"title": title, "description": description.strip(), "author": author, "spec_text": spec_text,
+              "base_spec": base, "status": "design_review", "stage": 1, "revision": 1, "tested": False,
+              "created_at": now(), "timeline": [], "requirement_text": (requirement_text or "").strip(),
+              "translation": translation}
+        if source:
+            cr["source"] = source        # "figma": a designer's change — needs a UX designer / admin to approve
+        cr = self._save(cr)
+        self._event(cr, author, "requirements", "submitted requirements")
+        cr["design"] = self._design(base, spec_text)
+        human_gate = source == "figma"
+        self._event(cr, "MobileHeal", "design",
+                    f"generated UX design ({len(cr['design']['changes'])} change(s)) — "
+                    + ("waiting for a UX designer or admin" if human_gate else
+                       "Autopilot is approving it" if self.autopilot else "awaiting approval"))
+        cr = self._save(cr)
+        if self.autopilot and not human_gate:
+            return self.approve_design(cr["id"], actor="Autopilot")
+        return cr
+
+    def revise(self, cid: int, spec_text: str, description: Optional[str], title: Optional[str],
+               requirement_text: Optional[str] = None, translation: Optional[dict] = None, note: Optional[str] = None) -> dict:
+        cr = self.get(cid)
+        if cr["status"] in ("merged", "closed"):
+            raise WorkflowError("This change request is closed", 409)
+        try:
+            parse_spec(spec_text)
+        except RuleParseError as e:
+            raise WorkflowError(f"Requirements are invalid: {e}")
+        cr.update(spec_text=spec_text, status="design_review", stage=1, tested=False,
+                  revision=cr.get("revision", 1) + 1, base_spec=self._read(codegen.SPEC_PATH) or "")
+        if description is not None:
+            cr["description"] = description.strip()
+        if title:
+            cr["title"] = title.strip()
+        if requirement_text is not None:
+            cr["requirement_text"] = requirement_text.strip()
+        if translation is not None:
+            cr["translation"] = translation
+        cr["design"] = self._design(cr["base_spec"], spec_text)
+        if cr.get("figma") and cr["figma"].get("suggestions"):
+            cr["figma"]["suggestions"] = fg.compare(cr["figma"]["suggestions"], spec_text)
+        self._event(cr, self.user, "requirements", note or f"revised requirements (rev {cr['revision']})")
+        self._event(cr, "MobileHeal", "design", "regenerated UX design — awaiting approval")
+        return self._save(cr)
+
+    # ------------------------------------------------------------ 3. coding (+ checks + PR)
+    def approve_design(self, cid: int, actor: Optional[str] = None) -> dict:
+        cr = self.get(cid)
+        if cr["status"] != "design_review":
+            raise WorkflowError("Design is not awaiting approval", 409)
+        from .figsync import FigmaSync
+        sync = FigmaSync(self)
+        who = actor or self.user
+        if cr.get("source") == "figma" and (who == "Autopilot" or not sync.can_approve(who)):
+            a = sync.approvers()
+            raise WorkflowError(f"Only a UX designer or portal admin can approve a Figma design change "
+                                f"({', '.join(a['ux_designers'] + a['admins'])}). You are signed in as {who}.", 403)
+        push_figma = sync.configured and cr.get("source") != "figma" and self.settings.get("figma_push_on_approve") != "off"
+        cr["status"], cr["stage"] = "coding", 2
+        cr["coding_log"] = []
+        self._event(cr, actor or self.user, "approve", "approved the UX design")
+        self._save(cr)
+        self.spawn(self._approved_then_code, cid, push_figma)
+        return cr
+
+    def _approved_then_code(self, cid: int, push_figma: bool):
+        """Sync the approved design to Figma first (same thread → no lost updates), then generate the code."""
+        if push_figma:
+            try:
+                from .figsync import FigmaSync
+                FigmaSync(self).push(self.get(cid), None, "design approved in MobileHeal")
+            except Exception as e:
+                log.warning("Figma push failed: %s", e)
+        self._run_coding(cid)
+
+    def spawn(self, fn, *args):
+        def run():
+            try:
+                fn(*args)
+            except WorkflowStopped:
+                log.info("background step for #%s ended: the workflow was stopped or restarted", args[0] if args else "?")
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
+        return t
+
+    def _log(self, cr: dict, step: str, status: str, detail: str = ""):
+        cr.setdefault("coding_log", []).append({"ts": now(), "step": step, "status": status, "detail": detail})
+        self._save(cr)
+
+    def _run_coding(self, cid: int):
+        cr = self.get(cid)
+        try:
+            base_files = self._base_files()
+            cr["base_spec"] = base_files[codegen.SPEC_PATH] or ""
+            cr["design"] = self._design(cr["base_spec"], cr["spec_text"])
+            self._log(cr, "Generate code", "running")
+            files = codegen.generate_code(cr, base_files, cr["spec_text"], cr["design"])
+            cr["files"] = files
+            cr["stats"] = {"files": len(files), "additions": sum(f["additions"] for f in files),
+                           "deletions": sum(f["deletions"] for f in files)}
+            self._log(cr, "Generate code", "done",
+                      f"{len(files)} files · +{cr['stats']['additions']} −{cr['stats']['deletions']}")
+
+            self._log(cr, "Generate test cases", "running")
+            note = self._generate_tests(cr)
+            cases = self.tests.list(cr["id"])
+            md_path = f"docs/tests/{cr['key']}.md"
+            md = tc.to_markdown(cr["key"], cases)
+            old = self._read(md_path)
+            if md != old:
+                d = codegen.unified_diff(md_path, old, md)
+                files.append({"path": md_path, "status": "added" if old is None else "modified", "content": md,
+                              "diff": d, **codegen.diff_stats(d)})
+            cr["stats"] = {"files": len(files), "additions": sum(f["additions"] for f in files),
+                           "deletions": sum(f["deletions"] for f in files)}
+            self._log(cr, "Generate test cases", "done", note)
+
+            # Android Developer Agent: requirement → Kotlin (plan → implement → lint → build → repair)
+            self._log(cr, "Android developer agent", "running", "planning…")
+            agent = AndroidAgent(self).run(cr, progress=lambda step, st, detail="": self._log(cr, f"Agent · {step}", st, detail))
+            have = {f["path"] for f in files}
+            for path, content in agent["files"].items():
+                old = self._read(path)
+                if old == content:
+                    continue
+                d = codegen.unified_diff(path, old, content)
+                entry = {"path": path, "status": "added" if old is None else "modified", "content": content,
+                         "diff": d, **codegen.diff_stats(d), "by": "android-agent"}
+                if path in have:
+                    files[:] = [f for f in files if f["path"] != path]
+                files.append(entry)
+            cr["android_agent"] = {k: agent.get(k) for k in ("engine", "plan", "lint", "iterations", "error")}
+            cr["android_agent"]["build"] = {k: v for k, v in (agent.get("build") or {}).items() if k != "output"}
+            cr["android_agent"]["build_output"] = (agent.get("build") or {}).get("output", "")[-4000:]
+            cr["android_agent"]["files"] = sorted(agent["files"])
+            cr["stats"] = {"files": len(files), "additions": sum(f["additions"] for f in files),
+                           "deletions": sum(f["deletions"] for f in files)}
+            self._log(cr, "Android developer agent", "fail" if agent.get("error") else "done",
+                      f"{agent.get('engine')}: {len(agent['files'])} Kotlin file(s)" + (f" · build {agent['build']['status']}" if agent.get("build") else ""))
+
+            # iOS developer agent: requirement → SwiftUI (template engine)
+            from .ios_agent import IOSAgent
+            ios = IOSAgent(self)
+            if ios.present:
+                self._log(cr, "iOS developer agent", "running", "planning…")
+                ia = ios.run(cr)
+                for path, content in ia["files"].items():
+                    old = self._read(path)
+                    if old == content:
+                        continue
+                    d = codegen.unified_diff(path, old, content)
+                    files[:] = [f for f in files if f["path"] != path]
+                    files.append({"path": path, "status": "added" if old is None else "modified", "content": content,
+                                  "diff": d, **codegen.diff_stats(d), "by": "ios-agent"})
+                cr["ios_agent"] = {k: ia.get(k) for k in ("engine", "plan", "lint")} | {"files": sorted(ia["files"])}
+                cr["stats"] = {"files": len(files), "additions": sum(f["additions"] for f in files),
+                               "deletions": sum(f["deletions"] for f in files)}
+                self._log(cr, "iOS developer agent", "done", f"templates: {len(ia['files'])} Swift file(s)")
+
+            self._log(cr, "Run checks", "running")
+            cr["checks"] = self._run_checks(cr, files) + self._agent_checks(cr)
+            fails = sum(1 for c in cr["checks"] if c["status"] == "fail")
+            warns = sum(1 for c in cr["checks"] if c["status"] == "warn")
+            cr["checks_summary"] = {"fail": fails, "warn": warns,
+                                    "pass": sum(1 for c in cr["checks"] if c["status"] == "pass")}
+            self._log(cr, "Run checks", "fail" if fails else "done",
+                      f"{cr['checks_summary']['pass']} passed · {warns} warnings · {fails} failed")
+
+            self._log(cr, "Open pull request", "running")
+            cr["pr"] = self._open_pr(cr, files)
+            self._log(cr, "Open pull request", "done", f"#{cr['pr']['number']} on {cr['pr']['branch']}")
+            cr["status"], cr["stage"] = "pr_open", 4
+            self._event(cr, "MobileHeal", "pr",
+                        f"opened PR #{cr['pr']['number']}: {cr['pr']['branch']} → {cr['pr']['base']} "
+                        f"({cr['stats']['files']} files, +{cr['stats']['additions']} −{cr['stats']['deletions']})")
+            self._event(cr, "MobileHeal", "checks",
+                        "checks " + ("failed" if fails else "passed") + f" ({warns} warning(s))")
+            self.pr_opened(cr)
+        except Exception as e:  # surface failures in the UI instead of hanging in "coding"
+            log.exception("coding failed")
+            cr = self.get(cid)
+            cr["status"], cr["stage"], cr["error"] = "failed", 2, str(e)
+            self._log(cr, "Error", "fail", str(e))
+            self._event(cr, "MobileHeal", "error", f"coding failed: {e}")
+            self._save(cr)
+
+    def _agent_checks(self, cr: dict) -> List[dict]:
+        a = cr.get("android_agent") or {}
+        if not a:
+            return []
+        lint = a.get("lint") or []
+        errs = [i for i in lint if i["severity"] == "error"]
+        pre = []
+        if a.get("error"):
+            pre.append({"name": "Android developer agent", "status": "fail", "ms": 0,
+                        "detail": f"The agent couldn't implement this requirement in Android code: {a['error']}. "
+                                  "Revise the requirement or retry (Update branch)."})
+        elif a.get("llm_error"):
+            pre.append({"name": "Android developer agent", "status": "warn", "ms": 0,
+                        "detail": f"Model failed ({a['llm_error'][:120]}); the template engine implemented what it could — "
+                                  "review that the requirement is fully covered."})
+        ia = cr.get("ios_agent")
+        if ia:
+            ilint = ia.get("lint") or []
+            ierr = [i for i in ilint if i["severity"] == "error"]
+            pre.append({"name": "iOS lint (SwiftUI)", "status": "fail" if ierr else "warn" if ilint else "pass", "ms": 1,
+                        "detail": "; ".join(f"{i['path'].split('/')[-1]}: {i['message']}" for i in ilint[:4]) or
+                                  "Previews present, no force unwraps, balanced structure"})
+            pre.append({"name": "iOS build & tests (Xcode)", "status": "warn", "ms": 0,
+                        "detail": "Not run here — build with ⌘B / test with ⌘U in Xcode, or `xcodebuild test` in CI."})
+        out = pre + [{"name": "Android architecture lint (skill)", "status": "fail" if errs else "warn" if lint else "pass",
+                "detail": ("; ".join(f"{i['path'].split('/')[-1]}: {i['message']}" for i in lint[:4]) if lint
+                           else "Clean Architecture, UDF, previews and test coverage rules satisfied"), "ms": 1}]
+        b = a.get("build") or {}
+        out.append({"name": "Android build & unit tests (Gradle)",
+                    "status": {"pass": "pass", "fail": "fail"}.get(b.get("status"), "warn"),
+                    "detail": b.get("detail", "not run") + (f" · {a.get('iterations')} agent iteration(s)" if a.get("iterations", 0) > 1 else ""),
+                    "ms": b.get("ms", 0), "output": a.get("build_output") or None})
+        return out
+
+    def _generate_tests(self, cr: dict) -> str:
+        self.tests.delete_generated(cr["id"])
+        cases, note = None, ""
+        if self.ai.available:
+            try:
+                cases = tc.generate_with_ai(self.ai, cr)
+                note = f"{len(cases)} cases written by Claude"
+            except Exception as e:
+                log.warning("AI test generation failed: %s", e)
+                note = f"Claude unavailable ({str(e)[:80]}); "
+        if not cases:
+            cases = tc.generate_from_design(cr)
+            note += f"{len(cases)} cases generated from the design"
+        for c in cases:
+            self.tests.add(c, cr["id"])
+        imported = sum(1 for c in self.tests.list(cr["id"]) if c.get("source") not in ("generated", "claude"))
+        return note + (f" · {imported} imported/attached" if imported else "")
+
+    def regenerate_tests(self, cid: int) -> List[dict]:
+        cr = self.get(cid)
+        if not cr.get("design") or cr.get("kind") == "incident":
+            raise WorkflowError("Test cases are generated after the design is approved", 409)
+        note = self._generate_tests(cr)
+        self._event(cr, self.user, "tests", f"regenerated test cases ({note})")
+        self._save(cr)
+        return self.tests.list(cid)
+
+    # ------------------------------------------------------------ Figma
+    def attach_figma(self, cid: int, url: str) -> dict:
+        cr = self.get(cid)
+        if not url.strip():
+            cr.pop("figma", None)
+            self._event(cr, self.user, "design", "removed the Figma design")
+            return self._save(cr)
+        try:
+            from .demomode import is_on
+            f = fg.fetch(url, self.settings.get("figma_token") or ("__demo__" if is_on(self.settings) else ""), self.ai)
+        except fg.FigmaError as e:
+            try:
+                f = {**fg.parse_url(url), "error": str(e), "suggestions": [], "fetched": False}
+            except fg.FigmaError:
+                raise WorkflowError(str(e))
+        f["suggestions"] = fg.compare(f.get("suggestions") or [], cr["spec_text"])
+        f["attached_at"] = now()
+        cr["figma"] = f
+        diff = sum(1 for x in f["suggestions"] if not x["match"] and x["valid"])
+        self._event(cr, self.user, "design", f"attached Figma design “{f.get('frame') or f.get('name') or f.get('slug') or 'link'}”"
+                    + (f" — {diff} difference(s) from the rules" if f.get("fetched") else ""))
+        return self._save(cr)
+
+    def apply_figma(self, cid: int, keys: List[str]) -> dict:
+        cr = self.get(cid)
+        if cr["status"] != "design_review":
+            raise WorkflowError("Figma rules can be applied while the design is in review", 409)
+        f = cr.get("figma") or {}
+        try:
+            text = fg.apply(f.get("suggestions") or [], cr["spec_text"], keys)
+        except RuleParseError as e:
+            raise WorkflowError(f"Those Figma values don't make valid rules: {e}")
+        return self.revise(cid, text, None, None, note=f"applied {len(keys)} rule(s) from the Figma design")
+
+    def test_gate(self, cr: dict) -> dict:
+        s = self.tests.summary(cr["id"])
+        s["policy"] = self.settings.get("merge_policy")
+        s["required"] = s["policy"] == "tests_required" and cr.get("kind") != "incident"
+        s["satisfied"] = (not s["required"]) or s["all_passed"] or bool(cr.get("override"))
+        return s
+
+    def _run_checks(self, cr: dict, files: List[dict]) -> List[dict]:
+        checks = []
+        t0 = time.perf_counter()
+        try:
+            spec = parse_spec(cr["spec_text"])
+            checks.append({"name": "Spec validation", "status": "pass",
+                           "detail": f"{len(spec.rules)} field rule(s), {len(spec.ui)} UI rule(s) parsed",
+                           "ms": round((time.perf_counter() - t0) * 1000)})
+        except RuleParseError as e:
+            checks.append({"name": "Spec validation", "status": "fail", "detail": str(e), "ms": 0})
+            return checks
+
+        checks.append(self._pytest_contract(cr, files))
+        checks.append(self._pytest_regression())
+
+        worst = min((r["ratio"] for r in cr["design"]["contrast"]), default=21)
+        rows = ", ".join(f"{r['element']} {r['ratio']}:1" for r in cr["design"]["contrast"])
+        checks.append({"name": "Accessibility (WCAG 2.1 AA)",
+                       "status": "pass" if worst >= 4.5 else "warn" if worst >= 3 else "fail",
+                       "detail": rows + ("" if worst >= 4.5 else " — below 4.5:1 for normal text"), "ms": 1})
+
+        unknown = [c["key"] for c in cr["design"]["changes"] if c["kind"] == "ui_changed" and not c["known"]]
+        checks.append({"name": "Android compatibility", "status": "warn" if unknown else "pass",
+                       "detail": ("Unknown UI keys ignored by the app: " + ", ".join(unknown)) if unknown else
+                       "All UI keys are supported by the current app build; RulesDefaults.kt regenerated", "ms": 1})
+
+        i = cr["design"]["impact"]
+        checks.append({"name": "User impact", "status": "info",
+                       "detail": f"{i['newly_flagged']} of {i['total_profiles']} profile(s) will be prompted on merge; "
+                                 f"{i['healed']} alert(s) clear", "ms": 1})
+        return checks
+
+    def _pytest(self, args: List[str], env: dict, cwd: Optional[Path] = None) -> subprocess.CompletedProcess:
+        cwd = Path(cwd or self.backend)
+        return subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *args],
+                              cwd=cwd, capture_output=True, text=True, timeout=120,
+                              env={**os.environ, "PYTHONPATH": str(cwd), "MOBILEHEAL_IN_CHECK": "1", **env})
+
+    @staticmethod
+    def _summ(out: str) -> str:
+        lines = [l for l in out.strip().splitlines() if l.strip()]
+        return lines[-1].strip("= ") if lines else "no output"
+
+    def _pytest_contract(self, cr: dict, files: List[dict]) -> dict:
+        t0 = time.perf_counter()
+        test_src = next((f["content"] for f in files if f["path"] == codegen.TEST_PATH), None)
+        if test_src is None:
+            test_src = self._read(codegen.TEST_PATH) or ""
+        with tempfile.TemporaryDirectory() as td:
+            spec = Path(td) / "requirements.txt"
+            spec.write_text(cr["spec_text"])
+            tf = Path(td) / "test_rules_contract.py"
+            tf.write_text(test_src)
+            try:
+                r = self._pytest([str(tf), "--rootdir", td], {"MOBILEHEAL_SPEC": str(spec)})
+            except Exception as e:
+                return {"name": "Contract tests (generated)", "status": "warn", "detail": f"could not run pytest: {e}", "ms": 0}
+        ms = round((time.perf_counter() - t0) * 1000)
+        if "No module named pytest" in r.stderr:
+            return {"name": "Contract tests (generated)", "status": "warn", "detail": "pytest not installed — skipped", "ms": ms}
+        return {"name": "Contract tests (generated)", "status": "pass" if r.returncode == 0 else "fail",
+                "detail": self._summ(r.stdout), "ms": ms, "output": r.stdout[-4000:]}
+
+    def _pytest_regression(self) -> dict:
+        t0 = time.perf_counter()
+        tests = self.backend / "tests"
+        args = [str(tests)] + (["--ignore", str(tests / "test_rules_contract.py")]
+                               if (tests / "test_rules_contract.py").exists() else [])
+        try:
+            r = self._pytest(args, {"MOBILEHEAL_INTERVAL": "3600"})
+        except Exception as e:
+            return {"name": "Regression suite", "status": "warn", "detail": f"could not run: {e}", "ms": 0}
+        ms = round((time.perf_counter() - t0) * 1000)
+        if "No module named pytest" in r.stderr:
+            return {"name": "Regression suite", "status": "warn", "detail": "pytest not installed — skipped", "ms": ms}
+        return {"name": "Regression suite", "status": "pass" if r.returncode == 0 else "fail",
+                "detail": self._summ(r.stdout), "ms": ms, "output": r.stdout[-4000:]}
+
+    def _pr_body(self, cr: dict) -> str:
+        d = cr["design"]
+        lines = [f"## {cr['key']}: {cr['title']}", "", cr["description"] or "", "", "### What changes", ""]
+        lines += [f"- {codegen.describe_change(c)}" for c in d["changes"]] or ["- (formatting only)"]
+        lines += ["", "### Files", ""] + [f"- `{f['path']}` ({f['status']}, +{f['additions']} −{f['deletions']})"
+                                          for f in cr["files"]]
+        lines += ["", "### Checks", ""] + [f"- {'✅' if c['status']=='pass' else '⚠️' if c['status']=='warn' else 'ℹ️' if c['status']=='info' else '❌'} "
+                                           f"**{c['name']}** — {c['detail']}" for c in cr.get("checks", [])]
+        lines += ["", "### How to test", "",
+                  "1. Open the MobileHeal workflow → this PR → **Test** tab.",
+                  "2. Toggle *Before / After* to compare; fill the highlighted fields and tap the button.",
+                  "3. Mark as tested, then merge to push the change to all phones.", "",
+                  "_Generated by the MobileHeal workflow._"]
+        return "\n".join(lines)
+
+    def _open_pr(self, cr: dict, files: List[dict], body: Optional[str] = None, prefix: str = "mobileheal") -> dict:
+        branch = (cr.get("pr") or {}).get("branch") or f"{self.branch_type(cr)}/{cr['key'].lower()}-{slug(cr['title'])}"
+        want = self.settings.get("base_branch") or "main"
+        pr = {"number": cr["id"], "branch": branch, "base": want, "commit": None, "type": self.branch_type(cr),
+              "git": False, "github_url": None, "github_error": None, "created_at": now()}
+        cr["pr_body"] = body or self._pr_body(cr)
+        if self.git.available:
+            try:
+                self.git.ensure_repo()
+                pr["base"] = self.git.resolve_base(want)
+                cr["base_commit"] = self.git.tip(pr["base"])
+                pr["base_commit"] = cr["base_commit"][:10]
+                msg = (f"{cr['key']}: {'fix ' if cr.get('kind') == 'incident' else ''}{cr['title']}\n\n"
+                       f"{cr['description']}\n\nGenerated by MobileHeal workflow.")
+                pr["commit"] = self.git.commit_branch(branch, {f["path"]: f["content"] for f in files}, msg,
+                                                      parent=cr["base_commit"])[:10]
+                pr["git"] = True
+                pr["compare"] = self.git.compare(pr["base"], branch)
+            except GitError as e:
+                pr["git_error"] = str(e)
+                log.warning("git unavailable for PR: %s", e)
+        prov = self.remote_provider()
+        if pr["git"] and prov:
+            from . import connectors as cx
+            try:
+                cx.push_branch(self.root, prov.remote(), branch, demo=prov.demo)
+                r = prov.open_pr(branch, pr["base"], f"{cr['key']}: {cr['title']}", cr["pr_body"]) if isinstance(prov, cx.GitHub) \
+                    else prov.open_mr(branch, pr["base"], f"{cr['key']}: {cr['title']}", cr["pr_body"])
+                pr["provider"] = "github" if isinstance(prov, cx.GitHub) else "gitlab"
+                pr["github_url"], pr["github_number"] = r["url"], r["number"]
+            except Exception as e:
+                pr["github_error"] = str(e)
+        return pr
+
+    @staticmethod
+    def branch_type(cr: dict) -> str:
+        """Branch prefix by origin: production incident → hotfix, plain-English requirement → feature,
+        rules/design change request → change."""
+        if cr.get("kind") == "incident":
+            return "hotfix"
+        return "feature" if (cr.get("requirement_text") or "").strip() else "change"
+
+    # ------------------------------------------------------------ review + autopilot
+    @property
+    def autopilot(self) -> bool:
+        return (self.settings.get("delivery_mode") or "manual") == "autopilot"
+
+    def pr_opened(self, cr: dict):
+        """Called once a PR is open (change requests and incident fixes): reviewer agents review it, then
+        Autopilot takes it from there."""
+        try:
+            self.reviews.run(cr)
+            rv = cr["review"]
+            self._event(cr, "MobileHeal", "review",
+                        f"review {rv['status'].replace('_', ' ')} — " + ", ".join(
+                            f"{'Android' if p == 'android' else 'iOS'} {v['approvals']}/{v['required']}"
+                            for p, v in rv["per_platform"].items()))
+        except Exception as e:
+            log.exception("review failed")
+            cr["review_error"] = str(e)
+        try:
+            from . import council
+            c = council.build(cr)
+            cr["council"] = {"consensus": c["consensus"], "decision": c["decision"], "summary": c["summary"],
+                             **({"classification": c["classification"], "severity": c["severity"]} if c.get("classification") else {})}
+            self._event(cr, "Agent council", "council", (f"root-cause analysis ({c['severity']}, {c['classification']['label']}): "
+                        if c.get("classification") else "reviewed the change: ") + f"{c['consensus']} agree — {c['summary']}")
+            if c.get("classification", {}).get("type") == "requirement_gap" and self.autopilot and not cr.get("linked_cr"):
+                self._requirement_from_incident(cr, actor="Autopilot")
+        except Exception:
+            log.exception("council failed")
+        self._save(cr)
+        if self.autopilot:
+            self.spawn(self.autopilot_continue, cr["id"])
+
+    def _requirement_from_incident(self, inc: dict, actor: str) -> dict:
+        """The council found a requirement gap — open a change request (requirements → design → … → deploy)."""
+        d = inc.get("incident") or {}
+        field = (d.get("message") or "").strip("'\" ")
+        text = self._read(codegen.SPEC_PATH) or ""
+        new = self.create(f"Confirm rule for '{field}' (from {inc['key']})",
+                          f"Raised by the agent council from incident {inc['key']}: the app crashed because '{field}' was "
+                          "missing. Product to confirm whether it is required or optional; the code fix ships separately.",
+                          text, author=f"{actor} (from {inc['key']})")
+        inc["linked_cr"] = {"id": new["id"], "key": new["key"]}
+        self._event(inc, actor, "council", f"opened {new['key']} for the requirement gap")
+        return new
+
+    def incident_to_cr(self, cid: int, actor: Optional[str] = None) -> dict:
+        inc = self.get(cid)
+        if inc.get("kind") != "incident":
+            raise WorkflowError("Only incidents can raise a change request", 409)
+        if inc.get("linked_cr"):
+            raise WorkflowError(f"Already linked to {inc['linked_cr']['key']}", 409)
+        new = self._requirement_from_incident(inc, actor or self.user)
+        self._save(inc)
+        return new
+
+    def review_action(self, cid: int, state: str, body: str, platform: str = "all", reviewer: str = "") -> dict:
+        cr = self.get(cid)
+        if cr["status"] != "pr_open":
+            raise WorkflowError("Only open PRs can be reviewed", 409)
+        try:
+            self.reviews.human(cr, (reviewer or "").strip()[:60] or self.user, state, body, platform)
+        except ValueError as e:
+            raise WorkflowError(str(e))
+        self._save(cr)
+        if self.autopilot:
+            self.spawn(self.autopilot_continue, cid)
+        return cr
+
+    def review_dismiss(self, cid: int, reviewer: str, reason: str) -> dict:
+        cr = self.get(cid)
+        if cr["status"] != "pr_open":
+            raise WorkflowError("Only open PRs can be reviewed", 409)
+        try:
+            self.reviews.dismiss(cr, reviewer, self.user, reason)
+        except ValueError as e:
+            raise WorkflowError(str(e))
+        self._save(cr)
+        if self.autopilot:
+            self.spawn(self.autopilot_continue, cid)
+        return cr
+
+    def review_resolve(self, cid: int, comment_id: str) -> dict:
+        cr = self.get(cid)
+        try:
+            self.reviews.resolve(cr, comment_id, self.user)
+        except ValueError as e:
+            raise WorkflowError(str(e))
+        return self._save(cr)
+
+    def review_rerun(self, cid: int) -> dict:
+        cr = self.get(cid)
+        if cr["status"] != "pr_open":
+            raise WorkflowError("Only open PRs can be reviewed", 409)
+        self._event(cr, self.user, "review", "re-requested review from the reviewer agents")
+        self.pr_opened(cr)
+        return self.get(cid)
+
+    def review_sync(self, cid: int) -> dict:
+        cr = self.get(cid)
+        res = self.reviews.sync(cr)
+        self._save(cr)
+        if res.get("synced") and self.autopilot and cr["status"] == "pr_open":
+            self.spawn(self.autopilot_continue, cid)
+        return {**res, "review": cr.get("review")}
+
+    def sync_open_reviews(self) -> int:
+        """Background: pull remote review activity for every open PR (GitHub / GitLab)."""
+        if self.settings.get("review_sync") == "off" or self.remote_provider() is None:
+            return 0
+        n = 0
+        for row in self.list():
+            if row.get("status") == "pr_open":
+                try:
+                    n += self.review_sync(row["id"]).get("synced", 0)
+                except Exception:
+                    log.exception("review sync failed")
+        return n
+
+    def start_background(self):
+        interval = float(os.getenv("MOBILEHEAL_REVIEW_SYNC", "60"))
+
+        def loop():
+            while True:
+                time.sleep(interval)
+                try:
+                    self.sync_open_reviews()
+                except Exception:
+                    log.exception("review sync loop")
+        self.spawn(loop)
+
+    def autopilot_continue(self, cid: int):
+        """Autopilot drives an open PR to production: when the reviewers' policy is satisfied and checks pass, it
+        records automated verification, merges and deploys. It stops (and notifies) when a human is needed."""
+        if not self.autopilot:
+            return
+        with self._autopilot_lock:
+            cr = self.get(cid)
+            if cr["status"] != "pr_open":
+                return
+            rv = self.reviews.evaluate(cr) if cr.get("review") else {}
+            if (cr.get("checks_summary") or {}).get("fail"):
+                return self._autopilot_fix(cr, "checks are failing: " + ", ".join(
+                    c["name"] for c in cr.get("checks") or [] if c.get("status") == "fail"))
+            if rv.get("status") != "approved":
+                blocking = [b for v in (rv.get("per_platform") or {}).values() for b in v["blocking"]]
+                if blocking:
+                    return self._autopilot_fix(cr, "changes requested by " + ", ".join(sorted(set(blocking))))
+                return self._autopilot_pause(cr, "waiting for approvals")
+            if self._stale(cr):
+                n = cr.get("autopilot_rebases", 0)
+                if n >= 2:
+                    return self._autopilot_pause(cr, f"{cr['pr'].get('base', 'main')} keeps moving — update the branch manually")
+                cr["autopilot_rebases"] = n + 1
+                self._event(cr, "Autopilot", "rebase", f"{cr['pr'].get('base', 'main')} moved since this PR was opened — "
+                            "updating the branch and re-running checks and review")
+                self._save(cr)
+                self.update_branch(cid)
+                return
+            try:
+                if not cr.get("tested"):
+                    s = cr.get("checks_summary") or {}
+                    self.mark_tested(cid, f"Autopilot: {s.get('pass', 0)} automated checks passed and "
+                                          f"{sum(v['approvals'] for v in rv['per_platform'].values())} review approvals.",
+                                     True, override=True, actor="Autopilot")
+                if self.prod_gate == "hil":
+                    cr = self.get(cid)
+                    if not cr.get("deploy_ready"):
+                        cr["deploy_ready"] = {"at": now(), "by": "Autopilot"}
+                        self._event(cr, "Autopilot", "deploy", "ready to deploy — reviewed, tested and approved. Waiting for the "
+                                    "human-in-the-loop switch to deploy to production.")
+                        self._save(cr)
+                        if self.watchdog is not None:
+                            try:
+                                self.watchdog.notify("warning", f"{cr['key']}: ready to deploy to production",
+                                                     "Flip the production switch to ship it.", f"#cr/{cid}", source="Autopilot")
+                            except Exception:
+                                pass
+                    return
+                if self.loop is not None and self.loop.is_running():
+                    asyncio.run_coroutine_threadsafe(self.merge(cid, actor="Autopilot"), self.loop).result(timeout=600)
+                else:
+                    asyncio.run(self.merge(cid, actor="Autopilot"))
+            except Exception as e:
+                cr = self.get(cid)
+                self._autopilot_pause(cr, f"merge blocked: {e}")
+
+    AUTOPILOT_FIX_ATTEMPTS = 3
+
+    def _autopilot_fix(self, cr: dict, why: str):
+        """Autopilot never stops to ask on a fixable problem: it re-runs the developer agents with the failure as
+        input (fresh branch, checks and reviews), up to AUTOPILOT_FIX_ATTEMPTS times, then pauses with the evidence."""
+        n = cr.get("autopilot_fixes", 0)
+        if n >= self.AUTOPILOT_FIX_ATTEMPTS:
+            return self._autopilot_pause(cr, f"{why} — still failing after {n} automatic fix attempts")
+        cr["autopilot_fixes"] = n + 1
+        fb = [c.get("output") or c.get("detail") or "" for c in cr.get("checks") or [] if c.get("status") == "fail"]
+        for c in (cr.get("review") or {}).get("comments") or []:
+            if not c.get("resolved") and c.get("severity") in ("blocker", "error", "major"):
+                fb.append(f"{c.get('reviewer', 'Reviewer')}: {c.get('body') or c.get('text') or ''}")
+        cr["fix_feedback"] = "\n\n".join(x[-3000:] for x in fb if x)[:9000]
+        self._event(cr, "Autopilot", "autopilot", f"{why} — fixing it automatically (attempt {n + 1}/{self.AUTOPILOT_FIX_ATTEMPTS}): "
+                    "re-running the developer agents with the failures, then checks and reviews")
+        self._save(cr)
+        try:
+            self.update_branch(cr["id"], actor="Autopilot")
+        except Exception as e:
+            self._autopilot_pause(self.get(cr["id"]), f"{why} — automatic fix couldn't start: {e}")
+
+    def _stale(self, cr: dict) -> bool:
+        if cr.get("kind") == "incident":
+            return any(self._read(p) != c for p, c in (cr.get("base_files") or {}).items())
+        return (self._read(codegen.SPEC_PATH) or "") != cr.get("base_spec")
+
+    def _autopilot_pause(self, cr: dict, why: str):
+        if cr.get("autopilot_paused") == why:
+            return
+        cr["autopilot_paused"] = why
+        self._event(cr, "Autopilot", "autopilot", f"paused — {why}. A person needs to act on this PR.")
+        self._save(cr)
+        if self.watchdog is not None:
+            try:
+                self.watchdog.notify("warning", f"{cr['key']}: Autopilot paused", why, f"#cr/{cr['id']}", source="Autopilot")
+            except Exception:
+                pass
+
+    def _remote_label(self):
+        p = self.remote_provider()
+        if p is None:
+            return None
+        return ("GitHub · " + p.repo) if p.__class__.__name__ == "GitHub" else ("GitLab · " + p.project)
+
+    def remote_provider(self):
+        """Configured remote (GitHub or GitLab) that PRs are mirrored to, or None for local-only."""
+        from . import connectors as cx
+        from .demomode import is_on
+        kind = self.settings.get("git_provider") or "local"
+        if is_on(self.settings) and kind == "local":
+            kind = "github"          # demo: show the full PR flow on a simulated GitHub
+        p = cx.GitHub(self.settings) if kind == "github" else cx.GitLab(self.settings) if kind == "gitlab" else None
+        return p if p is not None and p.configured else None
+
+    def _publish_docs(self, cr: dict):
+        from . import connectors as cx
+        cf = cx.Confluence(self.settings)
+        if not (cf.configured and cf.publish_on_merge):
+            return
+        doc = next((f for f in cr.get("files") or [] if f["path"].startswith(("docs/changes/", "docs/incidents/"))), None)
+        md = doc["content"] if doc else f"# {cr['key']}: {cr['title']}\n\n{cr.get('description', '')}"
+        try:
+            page = cf.publish(f"{cr['key']}: {cr['title']}", md)
+            cr["confluence"] = page
+            self._event(cr, "MobileHeal", "docs", f"published to Confluence ({cf.space})")
+        except Exception as e:
+            cr["confluence"] = {"error": str(e)[:300]}
+
+    # ------------------------------------------------------------ 5. test
+    def mark_tested(self, cid: int, notes: str, passed: bool = True, override: bool = False,
+                    actor: Optional[str] = None) -> dict:
+        actor = actor or self.user
+        cr = self.get(cid)
+        if cr["status"] != "pr_open":
+            raise WorkflowError("Only open PRs can be tested", 409)
+        if passed and cr.get("kind") != "incident":
+            gate = self.test_gate(cr)
+            if gate["required"] and not gate["all_passed"]:
+                if not override or len(notes.strip()) < 10:
+                    raise WorkflowError(f"{gate['passed']}/{gate['total']} test cases passed. Run the remaining tests, "
+                                        "or override with a written justification (10+ characters).", 409)
+                cr["override"] = {"by": actor, "reason": notes.strip(), "ts": now(),
+                                  "summary": {k: gate[k] for k in ("total", "passed", "failed", "not_run")}}
+                self._event(cr, actor, "override", f"overrode the test gate: “{notes.strip()}”")
+        cr["tested"] = bool(passed)
+        cr["test_notes"] = notes.strip()
+        cr["stage"] = 5 if passed else 4
+        verb = ("approved the fix" if passed else "requested changes") if cr.get("kind") == "incident" else \
+               ("verified in preview" if passed else "reported a problem in preview")
+        self._event(cr, actor, "test" if passed else "test_failed", verb +
+                    (f": “{notes.strip()}”" if notes.strip() else ""))
+        return self._save(cr)
+
+    # ------------------------------------------------------------ 6. merge
+    async def merge(self, cid: int, actor: Optional[str] = None) -> dict:
+        actor = actor or self.user
+        cr = self.get(cid)
+        if cr["status"] != "pr_open":
+            raise WorkflowError("PR is not open", 409)
+        if (cr.get("pr") or {}).get("git") and self.git.is_repo():
+            self.git.base_name = self.settings.get("base_branch") or "main"
+            try:
+                came_from = await asyncio.to_thread(self.git._on_base)
+                if came_from:
+                    self._event(cr, "MobileHeal", "merge", f"your project folder was on {came_from} — switched it back to "
+                                f"{self.git.base_name} so the merge lands there (Android Studio follows automatically)")
+            except GitError as e:
+                cr["pr"]["git_error"] = f"couldn't switch the project back to {self.git.base_name}: {e}"
+        if cr.get("checks_summary", {}).get("fail"):
+            raise WorkflowError("Checks are failing — revise the requirements first", 409)
+        if cr.get("review") is not None and not self.reviews.satisfied(cr):
+            per = cr["review"].get("per_platform") or {}
+            need = "; ".join(f"{'Android' if p == 'android' else 'iOS'}: {v['approvals']}/{v['required']} approvals"
+                             + (f", changes requested by {', '.join(v['blocking'])}" if v["blocking"] else "")
+                             for p, v in per.items() if not v["ok"])
+            raise WorkflowError(f"Code review isn't complete — {need}", 409)
+        incident = cr.get("kind") == "incident"
+        if not incident and not self.test_gate(cr)["satisfied"]:
+            raise WorkflowError("Test cases haven't all passed — run them in the Test tab or record an override", 409)
+        if not cr.get("tested"):
+            raise WorkflowError(("Review and approve the fix" if incident else
+                                 "Test the change in the preview and mark it as tested") + " before merging", 409)
+        if incident:
+            for path, content in (cr.get("base_files") or {}).items():
+                if self._read(path) != content:
+                    raise WorkflowError(f"{path} changed since this fix was prepared — click “Update branch” first", 409)
+        else:
+            current = self._read(codegen.SPEC_PATH) or ""
+            if current != cr["base_spec"]:
+                raise WorkflowError("The live rules changed since this PR was created — click “Update branch” first", 409)
+
+        files = {f["path"]: f["content"] for f in cr["files"]}
+        if not incident:
+            await self.agent.apply_text(cr["spec_text"])  # atomic write + live push to phones
+        merged = None
+        if cr["pr"].get("git"):
+            try:
+                merged = await asyncio.to_thread(self.git.merge_into_base, cr["pr"]["branch"], files,
+                                                 f"Merge {cr['key']}: {cr['title']} (#{cr['pr']['number']})")
+                if self.settings.get("delete_branch_on_merge") == "on":
+                    self.git.delete_branch(cr["pr"]["branch"])
+                else:
+                    cr["pr"]["kept"] = True      # branch stays for history / Android Studio's Git → Branches
+            except GitError as e:
+                cr["pr"]["git_error"] = str(e)
+        else:
+            for path, content in files.items():
+                p = self.root / path
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(content, encoding="utf-8")
+        if cr["pr"].get("github_number"):
+            from . import connectors as cx
+            prov = self.remote_provider()
+            try:
+                if prov is None:
+                    raise RuntimeError("remote not configured any more")
+                await asyncio.to_thread(prov.merge, cr["pr"]["github_number"])
+            except Exception as e:
+                name = "GitLab" if cr["pr"].get("provider") == "gitlab" else "GitHub"
+                cr["pr"]["github_error"] = f"merge on {name} failed: {e}"
+        cr["status"], cr["stage"] = "merged", 6
+        cr["merged_commit"] = merged[:10] if merged else None
+        cr["merged_at"] = now()
+        await asyncio.to_thread(self._publish_docs, cr)
+        cr.pop("autopilot_paused", None)
+        self._event(cr, actor, "merge", f"merged PR #{cr['pr']['number']} ({cr['pr']['branch']} → {cr['pr'].get('base', 'main')})"
+                    + (f" as {cr['merged_commit']}" if merged else "")
+                    + (" — review policy satisfied" if cr.get("review") else ""))
+        if incident:
+            self._hot_reload(cr)
+            self._event(cr, "MobileHeal", "deploy", "fix deployed — patched module reloaded in the running server")
+        else:
+            self._event(cr, "MobileHeal", "deploy", "rules applied live and pushed to connected phones")
+        return self._save(cr)
+
+    def _hot_reload(self, cr: dict):
+        import importlib
+        mod = (cr.get("incident") or {}).get("module")
+        if mod and mod in sys.modules:
+            try:
+                importlib.reload(sys.modules[mod])
+                cr["deployed"] = "hot-reloaded"
+            except Exception as e:
+                cr["deployed"] = f"restart required ({e})"
+
+    def update_branch(self, cid: int, actor: Optional[str] = None) -> dict:
+        """Rebase: regenerate the PR against the current live rules."""
+        cr = self.get(cid)
+        if cr["status"] != "pr_open":
+            raise WorkflowError("PR is not open", 409)
+        if cr.get("kind") == "incident":
+            self._event(cr, self.user, "rebase", "re-ran auto-heal against the latest code")
+            self._save(cr)
+            return self.healer.start(cid, actor=self.user)
+        live = self._read(codegen.SPEC_PATH) or ""
+        if live != cr.get("base_spec"):
+            from .rules import merge_spec
+            try:
+                merged, conflicts = merge_spec(cr.get("base_spec") or "", cr["spec_text"], live)
+            except RuleParseError as e:
+                raise WorkflowError(f"Can't update the branch automatically: {e}", 409)
+            cr["spec_text"] = merged
+            self._event(cr, "MobileHeal", "rebase", "replayed this PR's rule changes onto the latest "
+                        f"{(cr.get('pr') or {}).get('base', 'main')}"
+                        + (f" — conflicts resolved in favour of this PR: {', '.join(conflicts)}" if conflicts else ""))
+            if conflicts:
+                cr["rebase_conflicts"] = conflicts
+        cr["status"], cr["stage"], cr["tested"] = "coding", 2, False
+        cr.pop("override", None)
+        cr.pop("autopilot_paused", None)
+        self._event(cr, actor or self.user, "rebase", "updated branch with latest rules"
+                    + (" and the failures to fix" if cr.get("fix_feedback") else ""))
+        self._save(cr)
+        self.spawn(self._run_coding, cid)
+        return cr
+
+    @property
+    def prod_gate(self) -> str:
+        """'hil' = a person flips the production switch (default); 'auto' = Autopilot deploys too."""
+        return self.settings.get("prod_gate") or os.getenv("MOBILEHEAL_PROD_GATE", "hil")
+
+    def deploy(self, cid: int, actor: Optional[str] = None) -> dict:
+        """The human-in-the-loop production switch: deploy a PR that is ready (merge = deploy)."""
+        cr = self.get(cid)
+        if cr["status"] != "pr_open":
+            raise WorkflowError("Nothing to deploy — the PR isn't open", 409)
+        who = actor or self.user
+        if not cr.get("tested") and self.autopilot:
+            raise WorkflowError("Autopilot hasn't finished verifying this PR yet", 409)
+        self._event(cr, who, "deploy", "flipped the production switch — deploying")
+        self._save(cr)
+        if self.loop is not None and self.loop.is_running():
+            asyncio.run_coroutine_threadsafe(self.merge(cid, actor=who), self.loop).result(timeout=600)
+        else:
+            asyncio.run(self.merge(cid, actor=who))
+        return self.get(cid)
+
+    # ------------------------------------------------------------ stop / revert / restart
+    def _new_run(self, cr: dict):
+        cr["run"] = cr.get("run", 0) + 1
+        cr["_own_run"] = True
+
+    def stop(self, cid: int, actor: Optional[str] = None) -> dict:
+        """Halt the workflow wherever it is. Running agents finish their current call and then discard their work."""
+        cr = self.get(cid)
+        if cr["status"] in ("merged", "closed", "stopped", "reverted"):
+            raise WorkflowError(f"Nothing to stop — this is {cr['status']}", 409)
+        self._new_run(cr)
+        cr["stopped_from"], cr["status"] = cr["status"], "stopped"
+        cr.pop("autopilot_paused", None)
+        self._event(cr, actor or self.user, "stop", f"stopped the workflow (it was {cr['stopped_from'].replace('_', ' ')}) — "
+                    "agents and Autopilot won't touch it until it is restarted")
+        return self._save(cr)
+
+    def revert(self, cid: int, actor: Optional[str] = None) -> dict:
+        """Undo a merged change on main (new revert commit) and put the live rules / code back."""
+        cr = self.get(cid)
+        if cr["status"] != "merged":
+            raise WorkflowError("Only merged changes can be reverted", 409)
+        who = actor or self.user
+        sha = cr.get("merged_commit")
+        how = None
+        if sha and self.git.is_repo():
+            try:
+                self.git.base_name = self.settings.get("base_branch") or "main"
+                self.git._on_base()
+                self.git.git("revert", "--no-edit", sha)
+                how = f"git revert of {sha} on {self.git.base_name} → {self.git.head()[:10]}"
+            except GitError as e:
+                self.git.git("revert", "--abort", check=False)
+                log.warning("git revert failed, restoring files directly: %s", e)
+        if how is None:                                   # no git / conflicts: put the pre-merge files back
+            restore = dict(cr.get("base_files") or {})
+            if cr.get("kind") != "incident":
+                restore[codegen.SPEC_PATH] = cr.get("base_spec") or ""
+            for path, content in restore.items():
+                p = self.root / path
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(content, encoding="utf-8")
+            if self.git.is_repo() and restore:
+                try:
+                    self.git.commit_paths(list(restore), f"Revert {cr['key']}: {cr['title']}")
+                except GitError as e:
+                    log.warning("revert commit failed: %s", e)
+            how = f"restored {len(restore)} file(s) to their state before {cr['key']}"
+        if cr.get("kind") == "incident":
+            self._hot_reload(cr)
+        else:
+            text = self._read(codegen.SPEC_PATH) or ""
+            if self.loop is not None and self.loop.is_running():
+                asyncio.run_coroutine_threadsafe(self.agent.apply_text(text), self.loop).result(timeout=60)
+            else:
+                asyncio.run(self.agent.apply_text(text))
+        self._new_run(cr)
+        cr["status"], cr["stage"], cr["reverted_at"] = "reverted", 6, now()
+        cr["reverted_commit"] = how
+        self._event(cr, who, "revert", f"reverted the change — {how}. Live rules and connected phones are back to the "
+                    "previous version")
+        return self._save(cr)
+
+    def restart(self, cid: int, actor: Optional[str] = None) -> dict:
+        """Start the workflow again from the beginning (design for changes, analysis for incidents) on today's main."""
+        cr = self.get(cid)
+        if cr["status"] in ("coding", "diagnosing", "fixing"):
+            raise WorkflowError("It's running — stop it first", 409)
+        if cr["status"] == "merged":
+            raise WorkflowError("This change is live — revert it first, then restart", 409)
+        who = actor or self.user
+        self._new_run(cr)
+        for k in ("pr", "files", "stats", "review", "checks", "checks_summary", "autopilot_paused", "autopilot_fixes",
+                  "autopilot_rebases", "fix_feedback", "override", "error", "stopped_from", "attempts", "coding_log",
+                  "figma_pushes", "android_agent", "ios_agent", "merged_commit", "merged_at"):
+            cr.pop(k, None)
+        cr["tested"] = False
+        cr["restarts"] = cr.get("restarts", 0) + 1
+        if cr.get("kind") == "incident":
+            cr["status"], cr["stage"] = "detected", 0
+            self._event(cr, who, "restart", f"restarted the fix workflow (run {cr['run']})")
+            self._save(cr)
+            self.healer.start(cid, actor=who)
+            return self.get(cid)
+        try:
+            parse_spec(cr["spec_text"])
+        except RuleParseError as e:
+            raise WorkflowError(f"Requirements are invalid: {e}")
+        cr["base_spec"] = self._read(codegen.SPEC_PATH) or ""
+        cr["design"] = self._design(cr["base_spec"], cr["spec_text"])
+        cr["status"], cr["stage"] = "design_review", 1
+        self._event(cr, who, "restart", f"restarted the workflow from requirements (run {cr['run']}) against the latest "
+                    + (self.settings.get("base_branch") or "main"))
+        self._event(cr, "MobileHeal", "design", "regenerated UX design — " + ("Autopilot is approving it" if self.autopilot
+                                                                               and cr.get("source") != "figma" else "awaiting approval"))
+        cr = self._save(cr)
+        if self.autopilot and cr.get("source") != "figma":
+            return self.approve_design(cid, actor="Autopilot")
+        return cr
+
+    def close(self, cid: int) -> dict:
+        cr = self.get(cid)
+        if cr["status"] == "merged":
+            raise WorkflowError("Already merged", 409)
+        self._new_run(cr)
+        cr["status"] = "closed"
+        if cr.get("pr", {}).get("git"):
+            self.git.delete_branch(cr["pr"]["branch"])
+        self._event(cr, self.user, "close", "closed " + ("the incident" if cr.get("kind") == "incident" else "the change request"))
+        return self._save(cr)
+
+    # ------------------------------------------------------------ demo workspace → your project
+    @property
+    def home_project(self) -> Optional[Path]:
+        """In demo mode agents work in <project>/.mobileheal/demo-workspace — this is <project>."""
+        if self.root.parent.name == ".mobileheal" and (self.root.parent.parent / ".git").exists():
+            return self.root.parent.parent
+        return None
+
+    def promote(self, cid: int) -> dict:
+        """Copy a merged demo change into your real project as a new branch (your working tree isn't touched)."""
+        cr = self.get(cid)
+        home = self.home_project
+        if home is None:
+            raise WorkflowError("This change already lives in your project", 409)
+        if cr["status"] != "merged":
+            raise WorkflowError("Merge the change first", 409)
+        files = {f["path"]: f["content"] for f in cr.get("files") or [] if f.get("content") is not None}
+        if not files:
+            raise WorkflowError("This change has no files to copy", 409)
+        repo = GitRepo(home)
+        base = repo.resolve_base(self.settings.get("base_branch") or "main")
+        branch = "demo/" + (cr["pr"]["branch"].split("/", 1)[-1])
+        try:
+            sha = repo.commit_branch(branch, files, f"{cr['key']}: {cr['title']} (from the MobileHeal demo workspace)",
+                                     parent=repo.tip(base))
+        except GitError as e:
+            raise WorkflowError(f"Couldn't create the branch in your project: {e}", 409)
+        cr["promoted"] = {"project": str(home), "branch": branch, "base": base, "commit": sha[:10], "ts": now()}
+        self._event(cr, self.user, "promote", f"copied to your project as branch {branch} (from {base})")
+        self._save(cr)
+        return cr["promoted"]
+
+    def info(self) -> dict:
+        home = self.home_project
+        return {"stages": STAGES, "git": self.git.available, "repo": self.git.is_repo(), "root": str(self.root),
+                "demo_workspace": home is not None, "home_project": str(home) if home else None,
+                "github": self._remote_label(),
+                "log": self.git.log(6), "live_spec": self._read(codegen.SPEC_PATH) or ""}
