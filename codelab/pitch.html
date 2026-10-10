@@ -1,10 +1,118 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MobileHeal · Product pitch</title><link rel="stylesheet" href="pitch.css?v=enterprise-foundry-1"><script src="pitch.js?v=enterprise-foundry-1" defer></script></head>
-<body><header><a class="brand" href="index.html#0">m<span>+</span> <b>MobileHeal</b></a><span class="deck-label">PRODUCT PITCH · FIVE SLIDES</span><a id="back" href="index.html#0">Back to tutorial ↗</a></header>
-<main id="slides">
-<section class="slide" id="slide-1" aria-labelledby="title-1"><div class="kicker">01 / THE PROBLEM</div><div class="columns"><div><h1 id="title-1">Too many signals.<br><em>Too little shared context.</em></h1><p class="lead">A crash lands in Firebase. A defect lives in Jira. A requirement arrives by email. The team must reconnect the problem, code, tests and approval.</p><p>Product owners struggle to see progress. Developers repeat investigations. Architects lack a consistent record of evidence and release decisions.</p><span class="badge">The opportunity: traceable change from intake to release</span></div><div class="visual journey" aria-label="Three enterprise delivery problems"><div><small>FRAGMENTED INTAKE</small><h2>What needs fixing?</h2><p>Five channels, inconsistent requirements and missing ownership.</p></div><span class="arrow">↓</span><div><small>UNCERTAIN QUALITY</small><h2>What has been proved?</h2><p>A generated patch or a confident answer is not verified behavior.</p></div><span class="arrow">↓</span><div class="accent"><small>ENTERPRISE RISK</small><h2>Who can approve the change?</h2><p>Private data, scoped tools and accountable release decisions need enforceable controls.</p></div></div></div></section>
-<section class="slide" id="slide-2" aria-labelledby="title-2" hidden><div class="kicker">02 / THE SOLUTION</div><h1 id="title-2">One governed workspace.<br><em>Evidence before action.</em></h1><p class="lead">MobileHeal keeps intent, artifacts, reviewer findings and the human decision together. Microsoft Foundry supplies the proposed enterprise model and agent platform.</p><div class="steps"><div><span>1 · INTAKE</span><h2>Understand</h2><p>Normalize the five signals into acceptance criteria and an owner.</p></div><div><span>2 · AGENTS</span><h2>Propose</h2><p>Use Foundry-backed producers and reviewers with scoped context.</p></div><div><span>3 · HARNESS</span><h2>Verify</h2><p>Run approved tools, preserve receipts and join required reviews.</p></div><div><span>4 · HUMAN</span><h2>Authorize</h2><p>Approve the exact revision before a guarded release operation.</p></div></div><div class="audiences"><article><small>BUSINESS</small><h2>A clear next step</h2><p>Understand progress, uncertainty and the decision needed.</p></article><article><small>ENGINEERING</small><h2>Inspect the evidence</h2><p>Read changes, real check results, provenance and blockers.</p></article><article><small>ENTERPRISE</small><h2>Keep control</h2><p>Private connectivity, authenticated roles and auditable tool actions.</p></article></div><p class="note">Current local product: deterministic evidence reviewers and simulated identities/connectors. Foundry model/agent adapters and enterprise infrastructure must still be implemented and validated.</p></section>
-<section class="slide" id="slide-3" aria-labelledby="title-3" hidden><div class="kicker">03 / THE WORKFLOW</div><h1 id="title-3">Five signals.<br><em>One governed flow.</em></h1><p class="lead">Required reviewers receive frozen evidence independently. The join waits for every required result.</p><div class="sources"><span>Change request</span><span>Firebase crash</span><span>Issue email</span><span>Jira defect</span><span>BA requirement</span></div><div class="pipeline"><div>Intake & classify</div><b>→</b><div>Requirements & design</div><b>→</b><div>Implement</div></div><div class="review-row"><div>Stage reviewer A</div><div>Stage reviewer B</div></div><div class="join">↓ Required review join ↓</div><div class="pipeline"><div>Verify checks</div><b>→</b><div>Human approval</div><b>→</b><div class="accent">Local merge & monitor</div></div><p class="note">Failed or missing evidence blocks advancement. Rework is bounded; changed artifacts need fresh approval. External intake connectors use labeled mocks.</p><a class="action" id="workflow" href="http://localhost:8000/workflow-map">Explore the animated workflow ↗</a></section>
-<section class="slide" id="slide-4" aria-labelledby="title-4" hidden><div class="kicker">04 / ENTERPRISE PRIVATE NETWORK DESIGN</div><h1 id="title-4">Private access.<br><em>Explicit boundaries.</em></h1><p class="lead">Azure VNet is the Azure equivalent of a VPC. Keep MobileHeal workloads private and connect to Microsoft Foundry over Private Link.</p><div class="enterprise-map" role="img" aria-label="Employees connect using VPN or ExpressRoute to a customer Azure VNet containing the private MobileHeal application, harness and isolated workers. Private endpoints and DNS connect to Azure-managed Foundry and data services. External connectors use approved egress."><div class="network-access">Enterprise users · Microsoft Entra ID · VPN / ExpressRoute</div><div class="network-down">↓ Private application access</div><div class="network-grid"><div class="vnet-boundary"><small>CUSTOMER AZURE VNET</small><div class="network-node">Private MobileHeal UI / API<br><span>Entra roles · author / reviewer / releaser</span></div><div class="network-down">↓</div><div class="network-node">Durable harness + isolated tool workers<br><span>AKS deployment choice · scoped tools · bounded execution</span></div><div class="network-node">Private endpoint subnet + private DNS<br><span>Approved routes · NSGs · controlled egress</span></div><div class="network-node optional">Dedicated delegated agent subnet<br><span>If using Foundry Agent Service VNet injection</span></div></div><div class="private-link">⇄<br><span>Private Link<br>data access</span></div><div class="managed-boundary"><small>AZURE-MANAGED SERVICES</small><div class="network-node accent">Microsoft Foundry<br><span>Project · approved model deployment · Agent Service</span></div><div class="network-node">Agent Service dependencies<br><span>BYO Storage · Cosmos DB · Azure AI Search</span></div><div class="network-node">Application data + secrets<br><span>Production state adapter · artifact store · Key Vault</span></div><p class="note">Private endpoints expose private access; the managed services are not containers hosted inside your VNet.</p></div></div><div class="egress-note">External Jira / Firebase / email / Git services → approved connector gateway and egress rules. Private endpoints do not make third-party SaaS private.</div></div><p class="note">For the proposed Agent Service Standard setup: configure inbound private endpoints and outbound VNet injection, private endpoints for each dependency, private DNS, managed-identity permissions and disabled public data access. Confirm regional, tool and network support before provisioning.</p><p class="sources-note">Microsoft references: <a href="https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/virtual-networks" target="_blank" rel="noopener noreferrer">Agent Service private networking</a> · <a href="https://learn.microsoft.com/en-us/azure/foundry/how-to/configure-private-link" target="_blank" rel="noopener noreferrer">Foundry network isolation</a>. Proposed deployment; not provisioned.</p></section>
-<section class="slide" id="slide-5" aria-labelledby="title-5" hidden><div class="kicker">05 / WHAT THE ENTERPRISE MUST IMPLEMENT</div><h1 id="title-5">Platform. Integration. Proof.<br><em>Then a controlled pilot.</em></h1><div class="enterprise-requirements"><article><small>PLATFORM / SECURITY</small><h2>Establish the boundary</h2><ul><li>Azure subscription, region, budget and approved model capacity.</li><li>VNet/subnets, private endpoints, DNS and VPN or ExpressRoute access.</li><li>Entra roles, separate release authority, managed identities and Key Vault.</li><li>Private compute, durable queue/state/artifacts, monitoring and restore drills.</li></ul></article><article><small>APPLICATION / INTEGRATIONS</small><h2>Build the missing adapters</h2><ul><li>Foundry model/agent adapters with versioned prompts and contracts.</li><li>Retain harness-owned routing, tool permissions, reviewer joins and approval.</li><li>Production persistence adapter replacing local SQLite and isolated build runners.</li><li>Scoped Jira, Firebase, email and Git connectors with real receipts and idempotency.</li></ul></article><article><small>QUALITY / OPERATIONS</small><h2>Prove readiness</h2><ul><li>Evaluate agent quality on approved cases; red-team untrusted inputs.</li><li>Test blocked gates, private DNS/egress, role separation and secret handling.</li><li>Verify native builds, rollback, backup restore, capacity and cost limits.</li><li>Assign product, platform, security, mobile and operations owners; pilot one workflow.</li></ul></article></div><div class="readiness"><div><strong>Working locally</strong><p>Rules delivery, canonical crash repair, evidence records and human gates. Recorded required harness: 90 tests passed.</p></div><div><strong>Enterprise deployment is proposed</strong><p>No Foundry resources are provisioned and no live enterprise connector is established by this pitch. Evidence score ≥85 never overrides a mandatory blocker.</p></div></div><a class="action" id="app" href="http://localhost:8000/agents">Inspect the local control center ↗</a></section>
-</main><footer><div class="slide-links" aria-label="Choose slide"><a href="#1" aria-label="Slide 1" aria-current="page">1</a><a href="#2" aria-label="Slide 2">2</a><a href="#3" aria-label="Slide 3">3</a><a href="#4" aria-label="Slide 4">4</a><a href="#5" aria-label="Slide 5">5</a></div><span id="position" aria-live="polite">1 / 5</span><div class="controls"><button id="previous" disabled>← Previous</button><button id="next">Next →</button></div></footer><noscript><style>.slide[hidden]{display:block}footer{display:none}</style></noscript></body></html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pitch · MobileHeal</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&family=DM+Sans:wght@400;500;700&display=swap"><link rel="stylesheet" href="styles.css"></head><body class="page-pitch"><header class="topbar"><a class="brand" href="index.html#0"><span class="brandmark" aria-hidden="true">⌁</span><span>MobileHeal <span class="brand-label">CODELAB</span></span></a><nav class="mainnav" aria-label="Main"><a href="index.html#0">Tutorial</a><a href="demos.html">Demos</a><a href="pitch.html" aria-current="page">Pitch</a></nav><div class="toplinks"><a id="open-app" href="http://localhost:8000/#new" target="_blank" rel="noopener">Open demo <span aria-hidden="true">↗</span></a><a href="https://github.com/shreekrithi1/mobilehealdemo" target="_blank" rel="noopener">Source <span aria-hidden="true">↗</span></a></div></header><main class="solo pitch"><div class="pitch-head"><h2>Self-Healing Software</h2><span id="pcount"></span><button id="pprev" type="button">← Prev</button><button id="pnext" type="button">Next →</button><button id="pfull" type="button">Present</button></div><div id="deck"><div class="slide-frame"><div class="slide-scale"><section id="cover" data-transition="fade" style="background:#F8F9FA;color:#202124;font-family:'DM Sans', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:40px">
+<div style="position:absolute;left:0;top:0;width:1920px;height:16px;background:linear-gradient(90deg, #1A73E8 0%, #1A73E8 25%, #D93025 25%, #D93025 50%, #F9AB00 50%, #F9AB00 75%, #1E8E3E 75%, #1E8E3E 100%)"></div>
+<p style="font-size:32px;font-weight:500;color:#1A73E8;letter-spacing:4px;text-transform:uppercase">MobileHeal</p>
+<h1 style="font-size:140px;font-weight:700;line-height:1.05;color:#202124">Self-Healing Software</h1>
+<p style="font-size:48px;line-height:1.35;color:#5F6368;max-width:1300px">Bugs happen. We fix them automatically before anyone complains.</p>
+
+</section>
+</div></div><div class="slide-frame"><div class="slide-scale"><section id="problem" data-transition="fade" style="background:#F8F9FA;color:#202124;font-family:'DM Sans', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:64px">
+<p style="font-size:28px;font-weight:500;color:#D93025;letter-spacing:3px;text-transform:uppercase">The problem</p>
+<h2 style="font-size:72px;font-weight:700;line-height:1.15;color:#202124;max-width:1500px">Engineers spend too much time fixing old bugs instead of building new things.</h2>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFFFF;padding:40px;border-radius:20px;border-top:8px solid #D93025">
+<h3 style="font-size:40px;font-weight:700;color:#202124">Scattered</h3>
+<p style="font-size:30px;line-height:1.4;color:#5F6368">Bugs arrive through emails, Firebase and support tickets.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFFFF;padding:40px;border-radius:20px;border-top:8px solid #F9AB00">
+<h3 style="font-size:40px;font-weight:700;color:#202124">Slow to diagnose</h3>
+<p style="font-size:30px;line-height:1.4;color:#5F6368">Developers lose hours working out what went wrong.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFFFF;padding:40px;border-radius:20px;border-top:8px solid #1A73E8">
+<h3 style="font-size:40px;font-weight:700;color:#202124">Slow to ship</h3>
+<p style="font-size:30px;line-height:1.4;color:#5F6368">A simple fix takes days or weeks to go live.</p>
+</div>
+</div>
+
+</section>
+</div></div><div class="slide-frame"><div class="slide-scale"><section id="solution" data-transition="fade" style="background:#FFFFFF;color:#202124;font-family:'DM Sans', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:72px">
+<p style="font-size:28px;font-weight:500;color:#1A73E8;letter-spacing:3px;text-transform:uppercase">The solution</p>
+<h2 style="font-size:72px;font-weight:700;line-height:1.15;color:#202124">An automatic fix from start to finish</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:28px">
+<div style="display:flex;flex-direction:column;gap:20px;background:#E8F0FE;padding:40px;border-radius:20px">
+<p style="font-size:64px;font-weight:700;color:#1A73E8">1</p>
+<h3 style="font-size:38px;font-weight:700;color:#202124">Catch the bug</h3>
+<p style="font-size:28px;line-height:1.4;color:#3C4043">Errors arrive instantly from Firebase, tickets or email.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:20px;background:#FCE8E6;padding:40px;border-radius:20px">
+<p style="font-size:64px;font-weight:700;color:#C5221F">2</p>
+<h3 style="font-size:38px;font-weight:700;color:#202124">Find the cause</h3>
+<p style="font-size:28px;line-height:1.4;color:#3C4043">Pinpoint the exact line of code that failed.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:20px;background:#FEF7E0;padding:40px;border-radius:20px">
+<p style="font-size:64px;font-weight:700;color:#B06000">3</p>
+<h3 style="font-size:38px;font-weight:700;color:#202124">Write the fix</h3>
+<p style="font-size:28px;line-height:1.4;color:#3C4043">Generate the code patch and a test, automatically.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:20px;background:#E6F4EA;padding:40px;border-radius:20px">
+<p style="font-size:64px;font-weight:700;color:#137333">4</p>
+<h3 style="font-size:38px;font-weight:700;color:#202124">Test and ship</h3>
+<p style="font-size:28px;line-height:1.4;color:#3C4043">Safety checks run; one human switch sends it live.</p>
+</div>
+</div>
+
+</section>
+</div></div><div class="slide-frame"><div class="slide-scale"><section id="example" data-transition="fade" style="background:#202124;color:#F8F9FA;font-family:'DM Sans', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:64px">
+<p style="font-size:28px;font-weight:500;color:#8AB4F8;letter-spacing:3px;text-transform:uppercase">Real example · mobile crashes</p>
+<h2 style="font-size:72px;font-weight:700;line-height:1.15;color:#F8F9FA;max-width:1500px">From a crash on someone's phone to a fix ready to ship in seconds.</h2>
+<div style="display:flex;gap:32px;align-items:stretch">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#303134;padding:44px;border-radius:20px;border-left:8px solid #F28B82">
+<h3 style="font-size:40px;font-weight:700;color:#F28B82">The crash</h3>
+<p style="font-size:30px;line-height:1.4;color:#E8EAED">An Android user hits a divide-by-zero error.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#303134;padding:44px;border-radius:20px;border-left:8px solid #FDD663">
+<h3 style="font-size:40px;font-weight:700;color:#FDD663">The alert</h3>
+<p style="font-size:30px;line-height:1.4;color:#E8EAED">Firebase Crashlytics catches it immediately.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#303134;padding:44px;border-radius:20px;border-left:8px solid #81C995">
+<h3 style="font-size:40px;font-weight:700;color:#81C995">The fix</h3>
+<p style="font-size:30px;line-height:1.4;color:#E8EAED">One click: the patch is written, tested and ready.</p>
+</div>
+</div>
+
+</section>
+</div></div><div class="slide-frame"><div class="slide-scale"><section id="channels" data-transition="fade" style="background:#F8F9FA;color:#202124;font-family:'DM Sans', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:64px">
+<p style="font-size:28px;font-weight:500;color:#1A73E8;letter-spacing:3px;text-transform:uppercase">Where it works</p>
+<h2 style="font-size:72px;font-weight:700;line-height:1.15;color:#202124">One system handles every channel</h2>
+<table style="font-family:'DM Sans', Arial, sans-serif;font-size:34px;color:#3C4043">
+<tr><th style="width:30%;text-align:left">Channel</th><th style="width:70%;text-align:left">What MobileHeal does</th></tr>
+<tr style="background:#FFFFFF"><td>Feature requests</td><td>Turns an analyst's request into working, tested code</td></tr>
+<tr><td>Support tickets</td><td>Pulls tickets from Pega, logs them in Jira, repairs the bug</td></tr>
+<tr style="background:#FFFFFF"><td>User emails</td><td>Reads plain-English bug reports and fixes the cause</td></tr>
+<tr><td>App crashes</td><td>Catches Firebase crashes and patches the exact line</td></tr>
+</table>
+
+</section>
+</div></div><div class="slide-frame"><div class="slide-scale"><section id="change" data-transition="fade" style="background:#1A73E8;color:#FFFFFF;font-family:'DM Sans', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:56px">
+<p style="font-size:28px;font-weight:500;color:#D2E3FC;letter-spacing:3px;text-transform:uppercase">What needs to change</p>
+<h2 style="font-size:110px;font-weight:700;line-height:1.05;color:#FFFFFF">Stop waiting on tickets.</h2>
+<div style="display:flex;flex-direction:column;gap:24px">
+<p style="font-size:40px;line-height:1.35;color:#E8F0FE">Replace manual bug-hunting with automatic diagnosis.</p>
+<p style="font-size:40px;line-height:1.35;color:#E8F0FE">Ship a small patch instead of rolling back a whole release.</p>
+<p style="font-size:40px;line-height:1.35;color:#E8F0FE">Let developers build new products, not chase old bugs.</p>
+</div>
+
+</section>
+</div></div><div class="slide-frame"><div class="slide-scale"><section id="start" data-transition="fade" style="background:#FFFFFF;color:#202124;font-family:'DM Sans', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:64px">
+<p style="font-size:28px;font-weight:500;color:#1E8E3E;letter-spacing:3px;text-transform:uppercase">Get started</p>
+<h2 style="font-size:72px;font-weight:700;line-height:1.15;color:#202124">Choose your setup and run</h2>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:18px;background:#E8F0FE;padding:44px;border-radius:20px">
+<h3 style="font-size:40px;font-weight:700;color:#1967D2">Option A</h3>
+<p style="font-size:30px;line-height:1.4;color:#3C4043">Learn with the tutorial sandbox.</p>
+<p style="font-size:26px;color:#174EA6;background:#D2E3FC;padding:12px 18px;border-radius:10px">bash run-tutorial.sh</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:18px;background:#FEF7E0;padding:44px;border-radius:20px">
+<h3 style="font-size:40px;font-weight:700;color:#B06000">Option B</h3>
+<p style="font-size:30px;line-height:1.4;color:#3C4043">Test the complete system locally.</p>
+<p style="font-size:26px;color:#8A4A00;background:#FCE8B2;padding:12px 18px;border-radius:10px">bash start.sh</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:18px;background:#E6F4EA;padding:44px;border-radius:20px">
+<h3 style="font-size:40px;font-weight:700;color:#137333">Option C</h3>
+<p style="font-size:30px;line-height:1.4;color:#3C4043">Run the app and backend, ready for real work.</p>
+<p style="font-size:26px;color:#0D652D;background:#CEEAD6;padding:12px 18px;border-radius:10px">bash run-application.sh</p>
+</div>
+</div>
+
+</section>
+</div></div></div></main><script>(()=>{const deck=document.getElementById("deck"),fr=[...deck.children];let i=0;const fit=()=>fr.forEach(f=>{const s=f.querySelector(".slide-scale");s.style.transform="scale("+(f.clientWidth/1920)+")"});const show=n=>{i=Math.max(0,Math.min(fr.length-1,n));fr.forEach((f,k)=>f.classList.toggle("on",k===i));document.getElementById("pcount").textContent=(i+1)+" / "+fr.length;fit()};document.getElementById("pprev").onclick=()=>show(i-1);document.getElementById("pnext").onclick=()=>show(i+1);document.getElementById("pfull").onclick=()=>deck.requestFullscreen&&deck.requestFullscreen();deck.onclick=()=>show(i+1);addEventListener("keydown",e=>{if(e.key==="ArrowRight"||e.key===" ")show(i+1);if(e.key==="ArrowLeft")show(i-1)});addEventListener("resize",fit);document.addEventListener("fullscreenchange",()=>setTimeout(fit,50));show(0)})()</script></body></html>
