@@ -43,3 +43,7 @@ The earlier full inherited suite was interrupted after approximately ten minutes
 ## Web pitch update
 
 Added five responsive HTML slides and a link from the tutorial introduction. Browser checks verified all five slides at 390px with document width 390px, desktop diagrams, previous/next and direct-slide navigation, and preservation of the selected application port in tutorial/app links. JavaScript syntax, guide generation and Git whitespace checks passed. The pitch uses local assets and requires no PowerPoint download.
+
+## Enterprise web pitch revision
+
+Revised the five HTML slides to cover the problem, solution, governed workflow, proposed Azure VNet / Microsoft Foundry private-network architecture and enterprise implementation work. Networking claims were checked against official Microsoft documentation; sources are linked in slide4. All five mobile slides had document width390px at viewport390px, desktop architecture/requirements were visually inspected and no browser console errors were observed. JavaScript syntax and whitespace checks passed. This is a deployment design, not a deployed Foundry integration.

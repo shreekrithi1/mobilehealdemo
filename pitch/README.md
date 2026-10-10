@@ -11,3 +11,5 @@ The portable source is `build/build.mjs`. Set `PRESENTATIONS_SKILL_DIR`, `RUNTIM
 `build/validation-revised.json` records exactly five slides, zero package/layout findings, Arial typography and successful first-party import. All five previews were visually inspected. Native PowerPoint validation was not performed.
 
 PDF export is unavailable in this runtime because the bundled artifact tool could not resolve `#standard-fonts/Helvetica`. The editable PPTX and previews remain usable.
+
+The current HTML pitch follows: problem, solution, governed workflow, proposed private Azure VNet architecture using Microsoft Foundry, and enterprise implementation requirements. Microsoft networking references are linked from slide4; deployed local capabilities remain distinct from proposed enterprise work.
