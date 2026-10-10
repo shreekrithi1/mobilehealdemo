@@ -18,8 +18,9 @@ function nav() {
     const link=document.createElement('a'); link.href=`#${i}`; link.className=`lesson-link${completed.has(i)?' done':''}`;
     if(i===current) link.setAttribute('aria-current','step');
     const number=document.createElement('span'); number.className='lesson-number'; number.textContent=completed.has(i)?'✓':String(i+1).padStart(2,'0');
-    const title=document.createElement('span'); title.textContent=lesson.title;
-    link.append(number,title); $('lessons').append(link);
+    const title=document.createElement('span'); title.className='lesson-title'; title.textContent=lesson.title;
+    const duration=document.createElement('span'); duration.className='lesson-time'; duration.textContent=`${lesson.minutes}m`; duration.setAttribute('aria-label',`${lesson.minutes} minutes`);
+    link.append(number,title,duration); $('lessons').append(link);
   });
   $('no-results').hidden=matches>0; updateProgress();
 }
