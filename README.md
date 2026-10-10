@@ -2,13 +2,15 @@
 
 A runnable MobileHeal application and an illustrated, 14-lesson codelab. Take a requirement through design, generated code, review, interactive tests and a local merge; then explore crash recovery and data health.
 
-## 1) Tutorial
+## Run
+
+### 1) Tutorial
 
 ```bash
 bash run-tutorial.sh
 ```
 
-## 2) Application
+### 2) Application
 
 ```bash
 bash run-application.sh

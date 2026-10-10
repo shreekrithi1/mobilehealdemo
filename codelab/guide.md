@@ -47,11 +47,17 @@ A local MobileHeal workspace with a reviewed profile-screen change. The web work
 
 Use a terminal and a modern browser on macOS, Linux, or Windows with WSL. You do not need an LLM subscription, cloud project, or API key for the core lab. Keep this guide and MobileHeal in separate tabs.
 
-<!-- step: Run the tutorial | 1 | SETUP -->
+<!-- step: Run tutorial and application | 1 | SETUP -->
 ## 1) Tutorial
 
 ```bash
 bash run-tutorial.sh
+```
+
+## 2) Application
+
+```bash
+bash run-application.sh
 ```
 
 <!-- step: Run the application | 1 | SETUP -->
