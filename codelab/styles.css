@@ -104,7 +104,7 @@ figure.paused .dg-dot{background:#9aa0a6;animation:none}
 .dg-bar button{border:1px solid #dadce0;background:#fff;color:#1a73e8;font-size:12px;font-weight:500;border-radius:4px;padding:6px 14px}
 .dg-bar button:hover{background:#e8f0fe}
 figure.diagram+p:has(em){margin-top:10px;font-size:13px;color:#5f6368}
-@media(max-width:760px){figure.diagram{padding:10px 8px 8px;margin-left:-8px;margin-right:-8px;overflow-x:auto}.dg{min-width:600px}.lesson-link{margin-left:0;padding-left:12px}}
+@media(max-width:760px){figure.diagram{padding:10px 8px 8px;margin-left:-8px;margin-right:-8px;overflow:hidden}.dg{min-width:0}.lesson-link{margin-left:0;padding-left:12px}}
 @media(prefers-reduced-motion:reduce){figure.diagram,.dg-dot{animation:none}.dg .pkt{display:none}}
 
 /* Full-width central frame: no empty side gutters */
@@ -145,3 +145,38 @@ article hr{border:0;border-top:1px solid #dadce0;margin:36px 0}
 .slide-scale th,.slide-scale td{padding:18px 24px;text-align:left;border-bottom:1px solid #dadce0}
 @media(max-width:760px){.mainnav{margin-left:8px}.mainnav a{padding:0 8px;font-size:12px}.toplinks{display:none}.pitch-head h2{display:none}}
 main.solo h2{max-width:none}
+
+/* A complete diagram is a single, responsive visual stage. */
+figure.diagram{
+  position:relative;isolation:isolate;overflow:hidden;min-width:0;
+  padding:20px 24px 14px;border:1px solid #dbe5f1;border-radius:20px;
+  background:radial-gradient(ellipse at 50% 0%,#eaf2ff 0%,transparent 65%),#fff;
+  box-shadow:0 4px 8px #18315304,0 16px 40px #18315308;
+}
+figure.diagram::before{
+  content:"WORKFLOW EXPLORER";display:block;margin-bottom:12px;
+  color:#526b8b;font-size:10px;font-weight:700;letter-spacing:2px;
+}
+figure.diagram .dg{
+  width:100%;min-width:0;max-width:100%;height:auto;
+  max-height:calc(100svh - 220px);overflow:hidden;
+  background-image:radial-gradient(#a5b9d52b .75px,transparent .75px);
+  background-size:20px 20px;border-radius:12px;
+}
+.dg .card{filter:drop-shadow(0 3px 5px #233d6214)}
+.dg .pkt{filter:drop-shadow(0 0 5px #4285f480)}
+.dg-bar{padding-top:12px;margin-top:14px;border-color:#e1e9f3;gap:10px}
+.dg-live{font-size:11px;letter-spacing:.2px;color:#526b8b}
+.dg-dot{box-shadow:0 0 0 4px #1e8e3e0d}
+.dg-bar button{
+  border-color:#dbe5f1;border-radius:999px;padding:8px 18px;
+  transition:background .2s,box-shadow .2s;min-height:36px;
+}
+.dg-bar button:hover{background:#eaf2ff;box-shadow:0 2px 8px #1a73e81a}
+@media(max-width:760px){
+  figure.diagram{padding:14px 10px 10px;margin-left:0;margin-right:0;border-radius:14px}
+  figure.diagram::before{font-size:9px;margin-bottom:8px;letter-spacing:1.4px}
+  figure.diagram .dg{min-width:0;max-height:calc(100svh - 190px)}
+  .dg-bar{gap:6px}.dg-bar button{padding:8px 12px;min-height:40px}
+}
+@media(prefers-reduced-motion:reduce){.dg-bar button{transition:none}}

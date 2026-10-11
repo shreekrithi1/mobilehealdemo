@@ -30,8 +30,9 @@ class Svg:
 
     def lit(self, el_attr, start, base, color):
         """Animate an attribute from base → color at `start` (0..1 of the cycle), hold, reset at the end."""
-        a = min(start + 0.015, 0.93)
-        return (f'<animate attributeName="{el_attr}" dur="{CYCLE}s" repeatCount="indefinite" calcMode="linear" '
+        a = min(start + 0.035, 0.93)
+        return (f'<animate attributeName="{el_attr}" dur="{CYCLE}s" repeatCount="indefinite" calcMode="spline" '
+                'keySplines="0 0 1 1;0.22 1 0.36 1;0 0 1 1;0.4 0 0.2 1" '
                 f'values="{base};{base};{color};{color};{base}" keyTimes="0;{kt(start)};{kt(a)};0.96;1"/>')
 
     def card(self, x, y, w, h, color, num, title, sub='', owner='', start=0.0, icon=None):
