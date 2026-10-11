@@ -1722,6 +1722,16 @@ def cr_close(cid: int):
     return _wf(app.state.wf.close, cid)
 
 
+@app.get("/static/jira-import.js")
+def jira_import_js():
+    return FileResponse(STATIC / "jira-import.js", media_type="application/javascript")
+
+
+@app.get("/static/jira-import.css")
+def jira_import_css():
+    return FileResponse(STATIC / "jira-import.css", media_type="text/css")
+
+
 @app.get("/agents")
 def agent_center_page():
     return FileResponse(STATIC / "agent-center.html")

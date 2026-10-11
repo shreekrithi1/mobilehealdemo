@@ -526,6 +526,7 @@ code{overflow-wrap:anywhere}pre code{overflow-wrap:normal}.tabs{min-width:0;max-
 .rail-close,.rail-backdrop{display:none}
 @media(max-width:980px){.shell.rail-open::after{display:none}.rail-brand{position:relative;padding-right:42px}.rail-close{display:flex;position:absolute;right:0;top:0;align-items:center;justify-content:center;width:32px;min-height:32px;padding:0;background:transparent;color:var(--fg);border:1px solid var(--line);border-radius:50%;font-size:20px;cursor:pointer}.shell.rail-open .rail-backdrop{display:block;position:fixed;inset:0;z-index:19;background:rgba(32,33,36,.35);border:0;border-radius:0;padding:0}}
 </style>
+<link rel="stylesheet" href="/static/jira-import.css">
 </head>
 <body>
 <div class="shell" id="shell"><button class="rail-backdrop" aria-label="Close navigation" tabindex="-1" onclick="setWorkspaceNavigation(false)"></button>
@@ -576,6 +577,7 @@ code{overflow-wrap:anywhere}pre code{overflow-wrap:normal}.tabs{min-width:0;max-
 </div>
 <div class="toast" id="toast"></div>
 
+<script src="/static/jira-import.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 function isLocalDemo(){return !!(state.settings && (state.settings.demo_isolated || state.settings.demo_mode === "on"));}
@@ -977,10 +979,12 @@ async function renderNewChange(prefill){
   const ai = state.settings && state.settings.ai.available;
   $("#view").innerHTML = `
     <div class="hdr"><div><div class="meta" style="margin-bottom:6px"><span class="chip s-design_review">Step 1 · Requirements</span></div>
-      <h1>What do you need?</h1><div class="meta">Write it in plain English. MobileHeal turns it into rules, designs it, writes the code and tests, and opens a PR.</div></div></div>
+      <h1>What do you need?</h1><div class="meta">Type a requirement or import a Jira story or defect. Review the rules, then move into design, code and tests.</div></div></div>
     ${stepper(0)}
-    <div class="grid g-side" style="margin-top:18px">
+    <div id="request-grid" class="grid g-side" style="margin-top:18px">
       <div class="card"><div class="card-b">
+        ${jiraIntakeMarkup()}
+        <section id="requirement-panel" role="tabpanel" aria-labelledby="intake-write">
         <div class="field"><label for="f-eng" style="display:flex;justify-content:space-between;align-items:center">Requirement
             <span class="chip ${ai?'s-coding':'s-closed'}" title="${ai?'The agent reads your requirement with '+esc(state.settings.ai.provider_name+' · '+state.settings.ai.model):'Parser mode — no model API key. Add one in Settings.'}">${ai?'✦ Built with Agent · '+esc(state.settings.ai.model):'Built with Agent · Parser mode'}</span>${ai?'':` <a class="hint" href="#settings" style="margin:0">Add model key →</a>`}</label>
           <textarea id="f-eng" class="input big" rows="5" placeholder="e.g. Support needs a callback number for every customer, so make phone number required. Marketing wants the save button in brand red with the label “Update profile”. Date of birth is optional.">${esc(prefill?.requirement_text||"")}</textarea>
@@ -1004,11 +1008,12 @@ async function renderNewChange(prefill){
             <label class="hint" style="margin:0;display:flex;gap:6px;align-items:center">Banner <input type="color" value="#fff4e5" onchange="qUi('banner_color', this.value.toUpperCase())"></label>
             <button class="btn sm" onclick="$('#f-spec').value=state.info.live_spec;validateNew()">Reset</button>
           </div></details>
+        </section>
       </div>
-      <div style="padding:12px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;background:var(--sunk);border-radius:0 0 12px 12px">
+      <div id="requirement-actions" style="padding:12px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;background:var(--sunk);border-radius:0 0 12px 12px">
         <button class="btn primary" id="f-submit" onclick="submitNew()">Generate UX design →</button>
       </div></div>
-      <div><div class="label" style="text-align:center">Live preview</div><div id="f-phone" class="phones"></div></div>
+      <div id="request-live-preview"><div class="label" style="text-align:center">Live preview</div><div id="f-phone" class="phones"></div></div>
     </div>`;
   $("#f-spec").addEventListener("input", () => { state.manualRules = true; $("#f-submit").disabled = false; validateNew(); });
   $("#f-eng").addEventListener("input", () => { clearTimeout(state.engT); state.engT = setTimeout(() => { if ($("#f-eng") && $("#f-eng").value.trim().length > 12) translateEng(true); }, 1400); });
