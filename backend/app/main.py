@@ -1314,7 +1314,9 @@ def cr_create(body: CRIn):
 
 @app.get("/api/cr/{cid}")
 def cr_get(cid: int):
-    return _wf(app.state.wf.get, cid)
+    cr = _wf(app.state.wf.get, cid)
+    cr["branch_state"] = _wf(app.state.wf.branch_state, cr)
+    return cr
 
 
 @app.post("/api/cr/{cid}/revise")

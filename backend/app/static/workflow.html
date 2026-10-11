@@ -1106,10 +1106,10 @@ async function loadCR(id, tab){
   }, 700);
   else if (["pr_open","design_review","awaiting_approval","detected"].includes(state.cr.status)) state.poll = setInterval(async () => {
     if (!alive()) return clearInterval(state.poll);
-    if ((state.mode||{}).mode !== "autopilot" && !(state.cr.review && state.cr.pr && state.cr.pr.github_number)) return;
+    if (state.cr.status !== "pr_open" && (state.mode||{}).mode !== "autopilot" && !(state.cr.review && state.cr.pr && state.cr.pr.github_number)) return;
     const cr = await api(`/api/cr/${id}`);
     if (!alive()) return;
-    if (cr.status !== state.cr.status || cr.updated_at !== state.cr.updated_at) {
+    if (cr.status !== state.cr.status || cr.updated_at !== state.cr.updated_at || JSON.stringify(cr.branch_state) !== JSON.stringify(state.cr.branch_state)) {
       const moved = cr.status !== state.cr.status; state.cr = cr;
       if (moved) { clearInterval(state.poll); await refreshList(); await refreshInfo(); return loadCR(id, cr.status==="merged" ? "pr" : undefined); }
       renderCR();
@@ -1136,9 +1136,10 @@ function renderCR(){
       <div class="meta">${prLine}</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">${syncChip(cr)}${flowActions(cr)}${headerActions(cr)}</div></div>
     ${stepper(st, cr)}
+    ${cr.status==="pr_open"&&cr.branch_state?.up_to_date===false?`<div class="banner-err" style="margin-top:16px"><div style="min-width:0"><b>Source changed since this fix was prepared.</b><div class="hint" style="margin:6px 0">${(cr.branch_state.changed_files||[]).map(p=>`<code>${esc(p)}</code>`).join(", ")}</div>Update the branch to regenerate against the current source, then review and test the new fix.</div></div>`:""}
     <div id="owners-row"></div>
     ${!isInc(cr)?`<div class="hil" style="margin-top:16px"><div><b>Evidence-gated release</b><div class="hint" style="margin:0">Inspect confidence, independent reviewer receipts, blockers and simulated human approval in the agent control center.</div></div><a class="btn" href="/agents?cid=${encodeURIComponent(cr.id)}">Prepare release evidence →</a></div>`:""}
-    ${cr.status==="pr_open"&&cr.deploy_ready?`<div class="hil"><div class="hil-l"><span class="hil-dot"></span><div><b>${demo?"Ready for local merge":"Ready to deploy to production"}</b><div class="hint" style="margin:0">Reviewed by 2 agents per platform, all checks and tests green — prepared by ${esc(cr.deploy_ready.by)} ${ago(cr.deploy_ready.at)}. Human-in-the-loop: flip the switch to ship.</div></div></div>
+    ${cr.status==="pr_open"&&cr.deploy_ready&&cr.branch_state?.up_to_date!==false?`<div class="hil"><div class="hil-l"><span class="hil-dot"></span><div><b>${demo?"Ready for local merge":"Ready to deploy to production"}</b><div class="hint" style="margin:0">Reviewed by 2 agents per platform, all checks and tests green — prepared by ${esc(cr.deploy_ready.by)} ${ago(cr.deploy_ready.at)}. Human-in-the-loop: flip the switch to ship.</div></div></div>
       <label class="hil-switch" title="${demo?"Merge demo branch":"Deploy to production"}"><input type="checkbox" onchange="if(this.checked) hilDeploy(this)"><span></span><b>${demo?"Merge demo branch":"Deploy to production"}</b></label></div>`:""}
     ${cr.status==="stopped"?`<div class="banner-err" style="margin-top:16px;background:var(--amber-soft);color:var(--fg)"><span style="font-size:18px">⏸</span><div style="flex:1"><b>Workflow stopped</b> (it was ${esc((cr.stopped_from||"").replace(/_/g," "))}). Agents and Autopilot leave it alone until you restart it.</div><button class="btn sm primary" onclick="flowAct('restart')">↻ Restart</button></div>`:""}
     ${cr.status==="reverted"?`<div class="banner-err" style="margin-top:16px;background:var(--sunk);color:var(--fg)"><span style="font-size:18px">↶</span><div style="flex:1"><b>Reverted.</b> ${esc(cr.reverted_commit||"")}. Live rules and phones are back to the previous version.</div><button class="btn sm primary" onclick="flowAct('restart')">↻ Restart from requirements</button></div>`:""}
@@ -1175,6 +1176,7 @@ async function promoteCR(){ await act(async()=>{ const r = await api(`/api/cr/${
 async function openXcode(){ await act(async()=>{ await api("/api/ios/open",{method:"POST"}); }, "Opening the iOS project in Xcode…"); }
 async function openStudio(){ await act(async()=>{ const r = await api("/api/android/open",{method:"POST"}); }, "Opening the project in Android Studio…"); }
 function headerActions(cr){
+  if (cr.status==="pr_open" && cr.branch_state?.up_to_date===false) return `<button class="btn primary" onclick="updateBranch()">Update branch</button>`;
   if (isInc(cr)) {
     if (cr.status==="detected") return `<button class="btn primary" onclick="heal()">Analyze crash</button>`;
     if (cr.status==="awaiting_approval") return `<button class="btn" onclick="rejectFix()">Decline</button><button class="btn primary" onclick="approveFix()">Approve auto-fix</button>`;
@@ -1402,12 +1404,12 @@ function md(src){
 function tPR(cr){
   if (!cr.pr) return `<div class="empty">The pull request is opened automatically after coding.</div>`;
   const live = (state.info&&state.info.live_spec)||"";
-  const upToDate = isInc(cr) ? true : live === cr.base_spec, checksOk = !(cr.checks_summary&&cr.checks_summary.fail);
+  const upToDate = cr.branch_state ? cr.branch_state.up_to_date : !isInc(cr) && live === cr.base_spec, checksOk = !(cr.checks_summary&&cr.checks_summary.fail);
   const reqs = [[checksOk, checksOk?"All checks have passed":"Some checks are failing", "checks"],
     isInc(cr) ? [cr.tested, cr.tested?"Approved by a reviewer":"Waiting for the fix to be approved (Approve fix tab)", "test"]
               : [cr.tested, cr.tested ? (cr.override ? `Test gate overridden by ${cr.override.by}: “${cr.override.reason}”` : `All ${state.tests?state.tests.gate.total:""} test cases passed`)
                               : `${state.tests?state.tests.gate.passed:0}/${state.tests?state.tests.gate.total:0} test cases passed`, "test"],
-    [upToDate, upToDate?"Branch is up to date":"Code changed since this PR was created", null]];
+    [upToDate, upToDate?"Branch is up to date":`Code changed since this fix was prepared${cr.branch_state?.changed_files?.length?": "+cr.branch_state.changed_files.join(", "):""}. Update branch and review the regenerated fix.`, null]];
   if (cr.review) { const r = cr.review, ok = r.status==="approved";
     reqs.splice(1, 0, [ok, (ok ? "Code review approved — " : r.status==="changes_requested" ? "Changes requested — " : "Waiting for reviewers — ")
       + Object.entries(r.per_platform||{}).map(([p,v])=>`${p==="android"?"Android":"iOS"} ${v.approvals}/${v.required}`).join(" · "), "review"]); }
@@ -1661,9 +1663,9 @@ async function heal(){ await act(async()=>{ await api(`/api/incidents/${state.cr
 /* ---------------- actions ---------------- */
 async function act(fn, ok){ try { await fn(); if (ok) toast(ok); } catch(e){ toast(e.message); } }
 async function approve(){ await act(async()=>{ await api(`/api/cr/${state.cr.id}/approve`,{method:"POST"}); await refreshList(); await loadCR(state.cr.id,"code"); }, "Coding started"); }
-async function markTested(passed, override=false, notes=null){ await act(async()=>{ state.cr = await api(`/api/cr/${state.cr.id}/test`,{method:"POST",body:{notes:notes ?? (($("#t-notes")||{}).value||""),passed,override}}); if(!isInc(state.cr)) await loadTests(); await refreshList(); state.tab=passed?"pr":"test"; renderCR(); }, passed?(isInc(state.cr)?"Fix test results saved — inspect release evidence":"Test results saved — inspect release evidence"):"Feedback recorded"); }
+async function markTested(passed, override=false, notes=null){ await act(async()=>{ state.cr = await api(`/api/cr/${state.cr.id}/test`,{method:"POST",body:{notes:notes ?? (($("#t-notes")||{}).value||""),passed,override}}); state.cr = await api(`/api/cr/${state.cr.id}`); if(!isInc(state.cr)) await loadTests(); await refreshList(); state.tab=passed?"pr":"test"; renderCR(); }, passed?(isInc(state.cr)?"Fix test results saved — inspect release evidence":"Test results saved — inspect release evidence"):"Feedback recorded"); }
 async function merge(){ await act(async()=>{ state.cr = await api(`/api/cr/${state.cr.id}/merge`,{method:"POST"}); await refreshList(); await refreshInfo(); renderCR(); }, isInc(state.cr)?"Fix merged into local demo":"Merged into local demo"); }
-async function updateBranch(){ await act(async()=>{ await api(`/api/cr/${state.cr.id}/update-branch`,{method:"POST"}); await loadCR(state.cr.id,"code"); }, "Regenerating against latest rules"); }
+async function updateBranch(){ await act(async()=>{ await api(`/api/cr/${state.cr.id}/update-branch`,{method:"POST"}); await loadCR(state.cr.id,"code"); }, "Regenerating against latest source"); }
 async function cxOwners(cr){
   try { const c = await api(`/api/cr/${cr.id}/council`); c.crId = cr.id; state.council = c;
     const el = $("#owners-row"); if (!el || !state.cr || state.cr.id !== cr.id) return;

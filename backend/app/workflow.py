@@ -974,10 +974,17 @@ class Workflow:
         except Exception as e:
             self._autopilot_pause(self.get(cr["id"]), f"{why} — automatic fix couldn't start: {e}")
 
-    def _stale(self, cr: dict) -> bool:
+    def branch_state(self, cr: dict) -> dict:
+        """Compute freshness from live source, never from a persisted UI flag."""
         if cr.get("kind") == "incident":
-            return any(self._read(p) != c for p, c in (cr.get("base_files") or {}).items())
-        return (self._read(codegen.SPEC_PATH) or "") != cr.get("base_spec")
+            changed = [p for p, content in (cr.get("base_files") or {}).items()
+                       if self._read(p) != content]
+        else:
+            changed = [codegen.SPEC_PATH] if (self._read(codegen.SPEC_PATH) or "") != cr.get("base_spec") else []
+        return {"up_to_date": not changed, "changed_files": changed}
+
+    def _stale(self, cr: dict) -> bool:
+        return not self.branch_state(cr)["up_to_date"]
 
     def _autopilot_pause(self, cr: dict, why: str):
         if cr.get("autopilot_paused") == why:
