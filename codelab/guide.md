@@ -60,24 +60,34 @@ A local MobileHeal workspace with a reviewed profile-screen change. The web work
 Use a terminal and a modern browser on macOS, Linux, or Windows with WSL. You do not need an LLM subscription, cloud project, or API key for the core lab. Keep this guide and MobileHeal in separate tabs.
 
 <!-- step: Run tutorial and application | 1 | SETUP -->
-## 1) Tutorial
+## Open this tutorial
 
 ```bash
 bash run-tutorial.sh
 ```
 
-## 2) Application
+## Download and launch MobileHeal on macOS
 
 ```bash
-bash run-application.sh
+curl -fsSL https://raw.githubusercontent.com/shreekrithi1/MobileHeal/main/scripts/install-and-run.sh | bash
 ```
+
+This downloads the application into `~/MobileHeal`, prepares Android Studio and SDK tools, starts a backend, builds the Android app, boots its emulator and opens the app and portal. Review any first-run system permission and SDK license prompts in the terminal. No separate Gradle sync, device creation or Run step is needed. Keep that terminal open.
+
+The native application uses a separate checkout from this tutorial's simulated demo workspace. For the isolated web-only lab on macOS, Linux or WSL, use `bash run-application.sh` from this tutorial repository.
 
 <!-- step: Run the application | 1 | SETUP -->
-## 2) Application
+## One command from a fresh Mac
 
 ```bash
-bash run-application.sh
+curl -fsSL https://raw.githubusercontent.com/shreekrithi1/MobileHeal/main/scripts/install-and-run.sh | bash
 ```
+
+Wait for **MobileHeal is running**. Android Studio, the emulator and portal open automatically. First-run downloads take several minutes and several GB; review any license or system permission prompts. The terminal prints the actual portal URL and log location. It selects a free port and configures the Android app to use that same backend.
+
+Run the same command again to relaunch. Clean main checkouts update; local edits and branches are preserved. Ctrl+C stops this backend while the editor and emulator stay open. See the [application tutorial](https://github.com/shreekrithi1/MobileHeal/blob/main/docs/TUTORIAL.md).
+
+For the simulated web-only exercises in this codelab, run `bash run-application.sh` and follow that demo portal's printed URL.
 
 <!-- step: Orient yourself | 2 | DELIVERY -->
 ## One portal, two kinds of work
@@ -288,18 +298,15 @@ The web lab works without Android Studio or Xcode. These optional steps require 
 
 ### Android
 
-1. Install Android Studio and its Android SDK. Open the demo workspace's `android/` folder.
-2. Let Gradle sync complete. The project uses Java 17, compile SDK 34 and minimum SDK 26.
-3. The copied app includes Firebase plugins. Add your own Firebase Android configuration as `android/app/google-services.json` in the workspace you are building. The original project's Firebase configuration is deliberately excluded from this repository.
-4. Create an API 26+ emulator and run the app.
-5. Its default backend URL is `http://10.0.2.2:8000`. If using port 8010, update `BASE_URL` in the copied `android/app/build.gradle.kts` and rebuild.
+Use the application repository's automatic macOS launcher:
 
 ```bash
-cd .mobileheal/demo-workspace/android
-./gradlew :domain:test :data:testDebugUnitTest :app:testDebugUnitTest :app:compileDebugKotlin
+curl -fsSL https://raw.githubusercontent.com/shreekrithi1/MobileHeal/main/scripts/install-and-run.sh | bash
 ```
 
-Use a Firebase app matching your actual build's application ID. For a physical device, follow the network configuration in the application reference; loopback on a phone is the phone itself.
+It builds and launches the app on an API 34 emulator and opens Android Studio. No Firebase configuration is required for the local parser workflow. Rebuild with Studio's **Run** button after native changes. Backend port and profile settings are saved in `android/local.properties`.
+
+This runs `~/MobileHeal`, separately from the codelab's simulated `.mobileheal/demo-workspace`. Changes made in one workspace do not appear in the other's native build. For the simulated workspace's optional native extensions, configure that workspace's toolchain and any Firebase settings it requires.
 
 ### iOS
 
